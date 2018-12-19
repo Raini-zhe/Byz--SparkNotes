@@ -1,0 +1,91 @@
+广义线性回归
+
+  前面的线性回归输出结果服从高斯分布，当回归结果服从泊努利分布，即０－１分布时，其为逻辑回归，无论是高斯还是逻辑，抑或伽马，泊松等等，还有其他的，都属于指数族分布（spark都是支持的）
+  即：线性回归的输出服从高斯分布，广义线性模型（GLM）是线性模型响应变量遵循一定的分布从指数族分布的规格。
+
+
+Spark的广义线性回归提供评估GLM模型（summary statistics）汇总统计接口，包括残差，p-值，偏差，Akaike信息准则，及其他。
+
+设置模型的输出分布：
+Fit a Generalized Linear Model  It supports "gaussian", "binomial", "poisson" and "gamma" as family.Default is "gaussian".
+    "gaussian"（高斯分布） : "identity", "log", "inverse" -- 使用什么方式计算损失,连接函数，损失函数
+    "binomial"（二项式分布）: "logit", "probit", "cloglog"
+    "poisson"（泊松分布） : "log", "identity", "sqrt"
+    "gamma"（伽玛分布） : "inverse", "identity", "log"
+
+
+val glr = new GeneralizedLinearRegression()
+ def
+    setFamily(value: String): 设置模型的输出分布
+    setFeaturesCol(value: String):
+    setFitIntercept(value: Boolean): 是否使用截距
+    setLabelCol(value: String):
+    setLink(value: String): 连接函数（损失函数）
+    setLinkPredictionCol(value: String): Sets the link prediction (linear predictor) column name. 默认不设置，即不输出该列。
+    setMaxIter(value: Int): (>= 0)
+    setPredictionCol(value: String):
+    setRegParam(value: Double): Sets the regularization parameter for L2 regularization. (>= 0).（默认应该是L2）
+    setSolver(value: String): 优化求解算法参数。("l-bfgs"，"gd")-  If this is not set or empty, default value is 'auto'.
+    setTol(value: Double): Default is 1E-6.(设置迭代的收敛容差-步长)较小的值将导致更高的精度与更多的迭代成本。
+    setWeightCol(value: String): 默认不用设置. （权重列-权重较高的列）-- 如果不设置,将所有特征值权重看作1.0
+
+
+
+lrModel的一些方法：
+
+    系数矩阵Coefficients: glrModel.coefficients
+    截距向量Intercept: glrModel.intercept
+    模型评估：evaluate(dataset: Dataset[_]): GeneralizedLinearRegressionSummary -- Evaluate the model on the given dataset, returning a summary of the results.
+
+线性回归训练结果：
+    目前，除了目标跟踪（梯度优化时），训练忽略权重
+    val trainingSummary = glrModel.summary  ：GeneralizedLinearRegressionTrainingSummary
+
+    trainingSummary.totalIterations // 计算总共迭代多少次模型达到收敛
+    trainingSummary.objectiveHistory.mkString(",") // 迭代次数的历史拟合评分（越来越低）
+    trainingSummary.residuals.show()
+    trainingSummary.rootMeanSquaredError  // 均方根误差
+    trainingSummary.meanAbsoluteError
+    trainingSummary.r2
+
+
+lrModel.summary: LinearRegressionTrainingSummary 评估方法
+    coefficientStandardErrors: Array[Double] -- 标准差估计系数（该方法需标准化数据） 和 截距（如果使用了截距）：Standard error of estimated coefficients and intercept.
+    devianceResiduals: Array[Double] -- 加权残差平方根
+    ...
+
+
+
+例子：
+  import org.apache.spark.ml.regression.GeneralizedLinearRegression
+
+  // Load training data
+  val dataset = spark.read.format("libsvm")
+    .load("data/mllib/sample_linear_regression_data.txt")
+
+  val glr = new GeneralizedLinearRegression()
+    .setFamily("gaussian")
+    .setLink("identity")
+    .setMaxIter(10)
+    .setRegParam(0.3)
+
+  // Fit the model
+  val model = glr.fit(dataset)
+
+  // Print the coefficients and intercept for generalized linear regression model
+  println(s"Coefficients: ${model.coefficients}")
+  println(s"Intercept: ${model.intercept}")
+
+  // Summarize the model over the training set and print out some metrics
+  val summary = model.summary
+  println(s"Coefficient Standard Errors: ${summary.coefficientStandardErrors.mkString(",")}")
+  println(s"T Values: ${summary.tValues.mkString(",")}")
+  println(s"P Values: ${summary.pValues.mkString(",")}")
+  println(s"Dispersion: ${summary.dispersion}")
+  println(s"Null Deviance: ${summary.nullDeviance}")
+  println(s"Residual Degree Of Freedom Null: ${summary.residualDegreeOfFreedomNull}")
+  println(s"Deviance: ${summary.deviance}")
+  println(s"Residual Degree Of Freedom: ${summary.residualDegreeOfFreedom}")
+  println(s"AIC: ${summary.aic}")
+  println("Deviance Residuals: ")
+  summary.residuals().show()

@@ -1,0 +1,56 @@
+安装：（ http://zeppelin.apache.org/docs/0.7.2/manual/interpreterinstallation.html#3rd-party-interpreters
+
+下载的是 zeppelin-0.7.2-bin-all，Package with all interpreters.解压完成。
+
+不需要：
+./bin/install-interpreter.sh --name shell,jdbc,python
+./bin/install-interpreter.sh --name spark --artifact org.apache.zeppelin:zeppelin-spark_2.11:0.7.2
+
+
+启动 Apache Zeppelin
+    raini@biyuzhe:~/app/zeppelin$ bin/zeppelin-daemon.sh start
+    （After Zeppelin has started successfully, go to http://localhost:18081（默认8080） with your web browser.）
+
+停止 Apache Zeppelin
+    bin/zeppelin-daemon.sh stop
+
+================================================================================
+修改配置.bashrc
+    # zeppelin
+    export ZEPPELIN_HOME=/home/raini/app/zeppelin
+    export PATH=$ZEPPELIN_HOME/bin:$PATH
+
+修改 zeppelin-env.sh
+    # 所有配置都是后修改的
+    export JAVA_HOME=/home/raini/app/jdk
+    #(分布式模式用)，伪分布式不需要修改，默认使用local
+    export MASTER=spark://biyuzhe:7077
+    #export ZEPPELIN_PORT=18081
+    export SPARK_HOME=/home/raini/spark
+    export HADOOP_CONF_DIR=/home/raini/hadoop/etc/hadoop
+    #export SPARK_SUBMIT_OPTIONS="--driver-memory 1g --executor-memory 3g"
+
+    #export SPARK_MASTER_IP=localhost
+    #export SPARK_LOCAL_Ip=localhost
+
+
+
+修改 zeppelin-site.xml
+    <property>
+        <name>zeppelin.server.port</name>
+        <value>18081</value>
+        <description>修改端口</description>
+    </property>
+
+将 hive-site.xml 拷贝到 conf 下
+
+
+启动 Apache Zeppelin
+    raini@biyuzhe:~/app/zeppelin$ bin/zeppelin-daemon.sh start
+
+点击 “Interpreters” 菜单，配置spark/hive解释器
+    master:spark://biyuzhe:7077
+    spark.executor.memory:3G
+
+
+================================================================================

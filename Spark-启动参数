@@ -1,0 +1,57 @@
+
+
+
+  *   * $ ssh root@192.168.101.170  (!@#456eversec)
+
+spark-shell \
+--master spark://192.168.101.170:7077 \
+--driver-memory 10g \
+--executor-memory 30g \
+--total-executor-cores 16 \
+--driver-cores 4 \
+--conf "spark.driver.maxResultSize=3g" \
+--conf "spark.sql.shuffle.partitions=400" \
+--conf "spark.default.parallelism=400" \
+--conf spark.executor.extraJavaOptions="-verbose:gc -XX:+PrintGCDetails -XX:+PrintGCTimeStamps" \
+--conf spark.task.maxFailures=10 
+
+
+--packages graphframes:graphframes:0.5.0-spark2.1-s_2.11 \
+
+/tmp/kbc_2.10-1.0.jar 4 50 /tmp/input/ /tmp/output/ loc-brightkite_edges.txt
+
+
+
+--packages ml.sparkling:sparkling-graph_2.11:0.0.7
+
+--packages it.unipd.dei:graphx-diameter_2.11:0.1.0  graphx-diameter 是一个Spark包，允许近似（加权）图的直径，即最长的最短路径。
+
+--packages ai.h2o:sparkling-water-package_2.11:2.2.7
+
+
+
+
+
+
+
+
+spark-shell --master spark://biyuzhe:7077 --driver-memory 256m --executor-memory 512m --conf "spark.sql.shuffle.partitions=100" --conf "spark.default.parallelism=100" --packages graphframes:graphframes:0.5.0-spark2.1-s_2.11
+
+
+
+
+scp ./   root@192.168.101.172:/home/test/spark/jars/
+
+
+!@#456eversec
+
+
+
+
+
+
+
+
+
+
+#

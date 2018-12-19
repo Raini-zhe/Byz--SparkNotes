@@ -1,0 +1,148 @@
+SVM : 二分类支持向量机，目标类别必须是{0,1}
+
+对于线性可分两类数据，支持向量机就是条直线(对于高维数据点就是一个超平面), 两类数据点中的的分割线有无数条，SVM就是这无数条中最完美的一条。
+也就是这条线距离两类数据点越远，则当有新的数据点的时候我们使用这条线将其分类的结果也就越可信，那些距离分割平面最近的点就是支持向量(Support Vectors)。
+一句话总结下就是:
+  支持向量机就是用来分割数据点那个分割面，他的位置是由支持向量确定的(如果支持向量发生了变化，往往分割面的位置也会随之改变),
+  因此这个面就是一个支持向量确定的分类器即支持向量机。
+
+	如上原理也就使得SVM模型稳定性低，输入的微小变化会使得模型难以收敛。小数据精度很高，在数据量大的情况下运算复杂度高，不适合处理过大的数据。
+
+(人生苦短，为什么不用XGBoost呢？)
+
+
+（分类+回归），非概率模型。   当wTx的估计值大于等于阈值(默认0)时，数据点标记为1,否则为0.
+
+（1）
+Value Members：
+    def getNumFeatures: Int    -- The dimension of training features.
+    def isAddIntercept: Boolean  -- Get if the algorithm uses addIntercept
+    val optimizer: GradientDescent   --  The optimizer to solve the problem. -- 优化器解决问题。为模型设置参数用。
+    def run(input: RDD[LabeledPoint], initialWeights: Vector): SVMModel
+    def run(input: RDD[LabeledPoint]): SVMModel
+    def setIntercept(addIntercept: Boolean): SVMWithSGD.this.type  -- 设置算法是否应该加截距
+    def setValidateData(validateData: Boolean): SVMWithSGD.this.type  -- 设置算法在训练前验证数据 优化器解决问题。
+
+    （SVMModel）
+    model.clearThreshold()  --   Clear the default threshold.
+    def setThreshold(threshold: Double): SVMModel.this.type
+
+（2）
+模型评估：
+    评估得分（PR/ROC）曲线下的面积是经过归一化[0,1]了的.
+
+    import org.apache.spark.mllib.evaluation.BinaryClassificationMetrics
+
+    val metrics = Seq(lrModel, svmModel).map{ model =>
+      val scoreAndLabels = data.map{ point =>
+        (model.predict(point.features), point.label)
+      }
+      val metrics = new BinaryClassificationMetrics(scoreAndLabels)
+      (model.getClass.getSimpleName, metrics.areaUnderPR(), metrics.areaUnderROC())
+    }
+    //List((LogisticRegressionModel,0.7567586293858841,0.5014181143280931), (SVMModel,0.7567586293858841,0.5014181143280931))
+
+
+（3）
+[判断是否需要]特征标准化：
+    ：(StandardScaler(withMean = true)会丢失数据稀疏性)
+
+    import org.apache.spark.mllib.linalg.distributed.RowMatrix
+
+    val vectors = data.map(lp => lp.features)
+    val matrix = new RowMatrix(vectors)  // 接收一个RDD[Vector]
+
+    val matrixSummary = matrix.computeColumnSummaryStatistics() //计算矩阵每列的统计特性
+
+    println(matrixSummary.mean)  //输出每列均值
+    println(matrixSummary.max)
+    println(matrixSummary.variance) //输出矩阵每列方差
+    println(matrixSummary.numNonzeros) //每列非0项的数目
+    println(matrixSummary.normL2)
+
+
+/**为使得数据更符合模型的假设，对每个特征进行标准化，使得每个特征是（0均值）和（单位标准差）*/
+    做法：对（每个特征值）减去（列的均值），然后（除以）列的（标准差）以进行缩放
+
+    import org.apache.spark.mllib.feature.StandardScaler
+
+    val scaler = new StandardScaler(withMean = true, withStd = true).fit(vectors) //将向量传到转换函数
+    val scaledData = data.map(lp => LabeledPoint(lp.label, scaler.transform(lp.features)))
+
+    println(data.first.features)
+    //[0.789131,2.055555556,0.676470588,0.205882353,0.047058824,...]
+    println(scaledData.first.features)
+    //[1.137647336497678,-0.08193557169294771,1.0251398128933331,-0.05586356442541689,...
+    //为验证第一个特征已经应用标准差公式被转换了，用 第一个特征（减去）其均值，然后（除以）标准差--方差的平方根
+    println((data.first.features(0) - matrixSummary.mean(0)) / math.sqrt(matrixSummary.variance(0)))
+    //1.137647336497678
+
+
+（4）
+模型参数调优：
+            MLlib线性模型优化技术：SGD 和 L-BFGS(只在逻辑回归中使用LogisticRegressionWithLBFGS)
+
+    import org.apache.spark.mllib.optimization.{Updater,SimpleUpdater,L1Updater,SquaredL2Updater}
+    import org.apache.spark.mllib.classification.ClassificationModel
+    import org.apache.spark.rdd.RDD
+    //线性模型
+    //定义辅助函数，根据给定输入训练模型 (输入， 正则化参数， 迭代次数， 正则化形式， 步长)
+    def trainWithParams(input: RDD[LabeledPoint], regParam: Double, numIntrations: Int, updater: Updater, stepSize: Double) = {
+      val svm = new SVMWithSGD()
+      svm.optimizer
+        .setConvergenceTol(10e-6) // 平滑 （就是python里的C）
+        .setNumIterations(numIntrations)
+        .setUpdater(updater)
+        .setRegParam(regParam)
+        .setStepSize(stepSize)
+      svm.run(input)
+    }
+    //定义第二个辅助函数,根据输入数据和分类模型 计算AUC
+    def creatMetrics(label: String, data: RDD[LabeledPoint], model: ClassificationModel) = {
+      val scoreAndLabels = data.map { point =>
+        (model.predict(point.features),point.label)
+      }
+      val metrics = new BinaryClassificationMetrics(scoreAndLabels)
+      (label, metrics.areaUnderROC())
+    }
+    //加快多次模型训练速度, 缓存标准化后的数据
+    scaledDataCats.cache()
+
+1迭代：
+    val iterRasults = Seq(1, 5, 10, 50).map { param =>
+      val model = trainWithParams(scaledDataCats, 0.0, param, new SimpleUpdater, 1.0)
+      creatMetrics(s"$param iterations", scaledDataCats, model)
+    }
+    iterRasults.foreach { case (param, auc) => println(f"$param, AUC = ${auc * 100}%2.2f%%")}
+    //1 iterations, AUC = 64.95%
+    //    5 iterations, AUC = 66.62%
+    //    10 iterations, AUC = 66.55%
+    //    50 iterations, AUC = 66.81%
+
+
+2步长： 大步长收敛快，太大可能导致收敛到局部最优解
+    val stepResults = Seq(0.001, 0.01, 0.1, 1.0, 10.0).map { param =>
+      val model = trainWithParams(scaledDataCats, 0.0, numIteration, new SimpleUpdater, param)
+      creatMetrics(s"$param step size", scaledDataCats, model)
+    }
+    stepResults.foreach { case (param, auc) => println(f"$param,AUC = ${auc * 100}%2.2f%%")
+    }
+    //    0.001 step size,AUC = 64.97%
+    //      0.01 step size,AUC = 64.96%
+    //      0.1 step size,AUC = 65.52%
+    //      1.0 step size,AUC = 66.55%
+    //      10.0 step size,AUC = 61.92%
+
+
+3正则化, new L1Updater , new SimpleUpdater
+    val regResults = Seq(0.001, 0.01, 0.1, 1.0, 10.0).map{ param =>
+      val model = trainWithParams(scaledDataCats, param, numIteration, new SquaredL2Updater, 1.0)
+      creatMetrics(s"${param} L2 regularization parameter",scaledDataCats, model)
+    }
+    regResults.foreach{ case (param,auc) => println(f"$param,AUC = ${auc * 100}%2.2f%%")
+    }
+    //    0.001 L2 regularization parameter,AUC = 66.55%
+    //      0.01 L2 regularization parameter,AUC = 66.55%
+    //      0.1 L2 regularization parameter,AUC = 66.63%
+    //      1.0 L2 regularization parameter,AUC = 66.04%
+    //      10.0 L2 regularization parameter,AUC = 35.33%

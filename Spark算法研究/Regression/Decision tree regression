@@ -1,0 +1,47 @@
+它支持连续和分类特征。
+
+
+Parameter setters：
+
+    def
+        setCheckpointInterval(value: Int): 设置检查点间隔参数（> = 1）或禁用（-1）。10意味着，每10次迭代缓存一次检查点。
+
+        setFeaturesCol(value: String):
+
+        setImpurity(value: String): 用于信息增益计算的标准（不区分大小写）, Supported: "entropy" and "gini". (default = gini)
+
+        setLabelCol(value: String):
+
+        setMaxBins(value: Int): Must be >= 2 and >= number of categories in any categorical feature. (default = 32)。分裂特征的最大划分数量，每个桶尽可能包含越多相同的类别，表示越合理。每个特征分裂时,最大划分(桶)数量（用于连续属性离散化算法和选择如何分割在每个节点上的特征，越多bins粒度越细）。一个桶可包含多个类别特征，但是这些特征尽可能集中在一个桶内
+
+        setMaxDepth(value: Int): (>= 0) (default = 5)对决策树的层数作出限制，它是分类器为了对样本进行分类所作的一连串判断的最大次数，有利于避免过拟合。Depth 0 means 1 leaf node. Depth 1 means 1 internal node and 2 leaf nodes.
+
+        setMinInfoGain(value: Double): 在树节点拆分上要考虑的最小信息增益（Minimum information gain）.Should be >= 0.0. (default = 0.0)，可0.05..
+
+        setMinInstancesPerNode(value: Int): 分裂后每个孩子必须拥有的最小实例数。如果分裂导致左或右孩子少于mininstancespernode，分裂将被作为无效。Should be >= 1. (default = 1)
+
+        setPredictionCol(value: String):
+
+        setSeed(value: Long):
+
+        setVarianceCol: 有偏-样本方差(sample variance)==总体方差，也叫做有偏估计。
+
+        总体方差：
+          也叫做有偏估计，其实就是我们从初高中就学到的那个标准定义的方差，除数是N。如“果实现已知期望值，比如测水的沸点，那么测量10次，测量值和期望值之间是独立的（期望值不依测量值而改变，随你怎么折腾，温度计坏了也好，看反了也好，总之，期望值应该是100度），那么E『（X-期望）^2』，就有10个自由度。事实上，它等于（X-期望）的方差，减去（X-期望）的平方。” 所以叫做有偏估计，测量结果偏于那个”已知的期望值“。
+        样本方差：
+          无偏估计、无偏方差（unbiased variance）。对于一组随机变量，从中随机抽取N个样本，这组样本的方差就是Xi^2平方和除以N-1。这可以推导出来的。如果现在往水里撒把盐，水的沸点未知了，那我该怎么办？ 我只能以样本的平均值，来代替原先那个期望100度。 同样的过程，但原先的（X-期望），被（X-均值）所代替。 设想一下（Xi-均值）的方差，它不在等于Xi的方差， 而是有一个协方差，因为均值中，有一项Xi/n是和Xi相关的，这就是那个"偏"的由来
+
+
+        mllib中：
+          val categoricalFeatures = Map(0 -> 2, 1 -> 2)//第0列有2个特征，第一列有2个类别特征  -- 可作为setMaxBins的参考
+
+
+专家级设置：
+    def
+        setCacheNodeIds(value: Boolean): 如果TRUE，该算法将缓存节点IDS为每个实例。缓存可以加快更深层次树的训练。用户可以设置缓存检查点间隔时长或禁用它checkpointinterval。（默认= FALSE）
+        setMaxMemoryInMB(value: Int): MB分配给直方图聚合的最大内存。如果太小，那么1个节点每次迭代都会被分割，并且它的聚合可能超过这个大小。（默认值= 256 MB）
+
+
+
+模型方法：
+    lazy val featureImportances: Vector  -- 估计每个特征的重要性。这从其他损失函数中推广了“Gini”的重要性

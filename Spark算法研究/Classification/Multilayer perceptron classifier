@@ -1,0 +1,66 @@
+Multilayer perceptron classifier （多层感知器分类器）
+
+Spark Multilayer perceptron classifier (MLPC)多层感知器分类器,基于前馈人工神经网络(ANN)的分类器的研究
+    多层前馈神经网络有一个输入层，中间有一个或多个隐含层，有一个输出层。
+    多层感知器网络中每一层相当于一个单层前馈神经网络，如对第 q 层，它形成一个 Nq-1 维的超平面。它对于该层的输入模式进行线性分类，但是由于多层的组合，最终可以实现对输入模式的较复杂的分类。
+    MLPC由多层节点组成。 每个层完全连接到网络中的下一层。 输入层中的节点表示输入数据。 所有其他节点通过输入与节点权重w和偏差b的线性组合将输入映射到输出，并应用激活功能。
+      对于具有K + 1层的MLPC，可以以矩阵形式写出如下：
+          y(x)=fK(...f2(wT2f1(wT1x+b1)+b2)...+bK)
+      中间层节点使用Sigmoid（logistic）函数：
+          f(zi)=11+e−zi
+      输出层节点使用softmax函数：
+          f(zi)=ezi∑Nk=1ezk
+      输出层中的节点数N对应于类的数量。
+
+    MLPC采用反向传播来学习模型。 我们使用物流损失函数进行优化和L-BFGS作为优化程序。
+
+
+常见前馈神经网络:
+    感知器网络
+      感知器（又叫感知机）是最简单的前馈网络，它主要用于模式分类，也可用在基于模式分类的学习控制和多模态控制中。感知器网络可分为单层感知器网络和多层感知器网络。
+    BP网络
+      BP网络是指连接权调整采用了反向传播（Back Propagation）学习算法的前馈网络。与感知器不同之处在于，BP网络的神经元变换函数采用了S形函数（Sigmoid函数），因此输出量是0~1之间的连续量，可实现从输入到输出的任意的非线性映射。
+    RBF网络
+      RBF网络是指隐含层神经元由RBF神经元组成的前馈网络。RBF神经元是指神经元的变换函数为RBF（Radial Basis Function，径向基函数）的神经元。典型的RBF网络由三层组成：一个输入层，一个或多个由RBF神经元组成的RBF层（隐含层），一个由线性神经元组成的输出层。
+
+
+设计神经网络结构：
+    1.训练前，必须确定层数，以及每个单元的个数
+    2.特征标准化（0-1）
+    3.根据实验和误差，改进隐藏层
+
+
+Spark 的实现：
+    基于多层感知器的分类器训练器。中间层节点使用Sigmoid（logistic）函数，输出层使用softmax。输入的数目必须等于特征向量的大小。输出的数目必须等于标签类的总数。
+
+    val labelWhere = "case when affairs=0 then 0 else cast(1 as double) end as label"  // 这简直可以将多类别作为二分类的一种思路啊
+
+Parameter setters：
+    def
+      setFeaturesCol(value: String):
+      setLabelCol(value: String):
+      setPredictionCol(value: String):
+      setSeed(value: Long): Set the seed for weights initialization if weights are not set
+
+      setLayers(value: Array[Int]): 层大小包括输入大小8（特征数）和输出大小2（2分类）
+          // 隐藏层结点数=2n+1，n为输入结点数
+          // 指定神经网络的图层：输入层8个节点(即8个特征)；两个隐藏层，隐藏结点数分别为9和8；输出层2个结点(即二分类)
+          val layers = Array[Int](8, 9, 8, 2)
+          // 传统神经网络通常，层数<=5，隐藏层数<=3
+
+      setMaxIter(value: Int): Set the maximum number of iterations.
+
+      setStepSize(value: Double): 步长可用于每次迭代时优化参数（> 0）(applicable only for solver "gd").
+
+      setTol(value: Double): 对迭代算法的收敛容差参数（> = 0）
+
+
+(expert-only) Parameter setters：
+      def
+        setBlockSize(value: Int): 块的大小，用于堆叠矩阵中的输入数据，以加快计算。数据在分区内堆叠。如果块大小大于分区中的剩余数据，则调整到该数据的大小。推荐尺寸介于10和1000之间。默认值：128
+        setInitialWeights(value: Vector): Sets the value of param initialWeights.
+        setSolver(value: String): 优化求解算法。支持的选项： "gd"（minibatch梯度下降）或"l-bfgs"。默认： "l-bfgs"
+
+
+
+编写项目请查看例子：FlightDelayClassifier（MLPC例子）.scala    And    MLPC(例子).scala

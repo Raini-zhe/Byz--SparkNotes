@@ -1,0 +1,63 @@
+BinaryLogisticRegressionTrainingSummary类 -> (针对二分类问题)
+BinaryLogisticRegressionSummary
+
+
+计算： （F-Measure）（PR）（ROC）
+快速计算MSE：
+  5、逻辑回归.numFalseNegatives()      // 误报数计算
+  6、逻辑回归.confusionMatrix()        // 混淆矩阵
+
+
+
+
+val mlrModel = mlr.fit(training)
+    mlrModel.
+      coefficientMatrix       // 计算（系数矩阵）,线性代数里面的概念,就是非齐次线性方程组(常数项不全为零的线性方程组)的系数组成的那个矩阵.
+      // 系数矩阵是矩阵中的众多类型之一，简单来说系数矩阵就是将方程组的系数组成矩阵来计算方程的解。系数矩阵常常用来表示一些项目的数学关系，比如通过此类关系系数矩阵来证明各项目的正反比关系。
+    mlrModel.interceptVector  // 计算（截距矢量）,
+    mlrModel.coefficients     // “二分类”Logistic回归模型系数的向量。如果这个模型使用 "multinomial" family 进行训练，则抛出异常。
+                              // 这是主要的lasso的特性:任何它认为没有用的预测器，都设置他们的系数为零来从等式中移出这些无用的特征。
+            .numFalseNegatives()      // 误报数计算
+
+
+
+
+-->（使用 BinaryLogisticRegressionTrainingSummary类 做统计分析）- 因为它功能更强
+
+      import org.apache.spark.ml.classification.BinaryLogisticRegressionTrainingSummary
+
+
+    1.（首先获取lr模型的统计信息）
+      val trainingSummary = mlrModel.summary
+
+    2.（使用该统计类）
+      val binaryLR = trainingSummary.asInstanceOf[BinaryLogisticRegressionTrainingSummary]
+
+    3.（做统计分析）
+      binaryLR.fMeasureByThreshold.show   // 计算 阈值 和 综合评价指标（F-Measure） Returns a dataframe with two fields (threshold, F-Measure) curve with beta = 1.0.
+      binaryLR.areaUnderROC
+      binaryLR.objectiveHistory           // 计算 历史预测目标值（Objective History）
+      binaryLR.pr.show()                  // 计算 PR召回率
+      binaryLR.recallByThreshold.show     //     阈值 和 召回率 - Returns a dataframe with two fields (threshold, recall) curve.
+      binaryLR.roc.show                   // 计算 FPR（假正率） = FP /（FP + TN）被预测为正的负样本结果数 /负样本实际数 ; TPR(真正率) = TP /（TP + FN）正样本预测结果数 / 正样本实际数
+      binaryLR.precisionByThreshold.show  //     阈值 和 准确率 - Returns a dataframe with two fields (threshold, precision) curve. Every possible probability obtained in transforming the dataset are used as thresholds used in calculating the precision.
+      binaryLR...
+
+
+
+  val a = mlrModel.transform(training)
+
+
+
+
+All Value Members:
+  lazy val areaUnderROC: Double --  Permalink Computes the area under the receiver operating characteristic (ROC) curve.
+  lazy val fMeasureByThreshold: DataFrame -- Returns a dataframe with two fields (threshold, F-Measure) curve with beta = 1.0.
+  val featuresCol: String -- field in "predictions" which gives the features of each instance as a vector.
+  val labelCol: String -- field in "predictions" which gives the true label of each instance.
+  lazy val pr: DataFrame  -- Returns the precision-recall curve, which is a Dataframe containing two fields recall, precision with (0.0, 1.0) prepended to it.
+  lazy val precisionByThreshold: DataFrame -- Returns a dataframe with two fields (threshold, precision) curve.
+  val predictions: DataFrame -- dataframe output by the model's transform method.
+  val probabilityCol: String -- field in "predictions" which gives the probability of each class as a vector.
+  lazy val recallByThreshold: DataFrame -- Returns a dataframe with two fields (threshold, recall) curve.
+  lazy val roc: DataFrame -- Returns the receiver operating characteristic (ROC) curve, which is a Dataframe having two fields (FPR, TPR) with (0.0, 0.0) prepended and (1.0, 1.0) appended to it.

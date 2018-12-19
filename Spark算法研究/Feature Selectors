@@ -1,0 +1,48 @@
+
+（1）VectorSlicer
+    VectorSlicer用于从原来的特征向量中切割一部分，形成新的特征向量，比如，原来的特征向量长度为10，我们希望切割其中的5~10作为新的特征向量，使用VectorSlicer可以快速实现。
+
+        import java.util.Arrays
+
+        import org.apache.spark.ml.attribute.{Attribute, AttributeGroup, NumericAttribute}
+        import org.apache.spark.ml.feature.VectorSlicer
+        import org.apache.spark.ml.linalg.Vectors
+        import org.apache.spark.sql.Row
+        import org.apache.spark.sql.types.StructType
+
+        val data = Arrays.asList(
+          Row(Vectors.sparse(3, Seq((0, -2.0), (1, 2.3)))),
+          Row(Vectors.dense(-2.0, 2.3, 0.0))
+        )
+
+        val defaultAttr = NumericAttribute.defaultAttr
+        val attrs = Array("f1", "f2", "f3").map(defaultAttr.withName)
+        val attrGroup = new AttributeGroup("userFeatures", attrs.asInstanceOf[Array[Attribute]])
+
+        val dataset = spark.createDataFrame(data, StructType(Array(attrGroup.toStructField())))
+
+        val slicer = new VectorSlicer().setInputCol("userFeatures").setOutputCol("features")
+
+        slicer.setIndices(Array(1)).setNames(Array("f3"))
+        // or slicer.setIndices(Array(1, 2)), or slicer.setNames(Array("f2", "f3"))
+
+        val output = slicer.transform(dataset)
+        output.show(false)
+
+
+（2）RFormula
+
+
+（3）ChiSqSelector
+通常，预处理之后获得的特征有成千上万维，出于去除冗余特征、消除维数灾难、提高模型质量的考虑，需要进行选择。在此，使用卡方检验方法，
+
+  它适用于带有类别特征的标签数据。ChiSqSelector使用卡方独立测试来决定选择哪些特征。它支持三种选择方法：numTopFeatures, percentile, fpr：
+    1.numTopFeatures根据卡方检验选择固定数量的顶级功能。这类似于产生具有最大预测能力的功能。
+    2.percentile类似于numTopFeatures，但选择所有功能的一部分，而不是固定数量。
+    3.fpr选择p值低于阈值的所有特征，从而控制选择的假阳性率。
+  默认情况下，选择方法是numTopFeatures，默认的顶级功能数量设置为50.用户可以使用setSelectorType选择一种选择方法。
+
+利用特征与类标签之间的相关性，进行特征选取：
+        /*特征较多时，使用卡方检验进行特征选择，主要是考察特征与类标签的相关性*/
+        val chiSqSelector = new ChiSqSelector().setFeaturesCol("vectorFeature").setLabelCol("label").setNumTopFeatures(10)
+                .setOutputCol("selectedFeature");

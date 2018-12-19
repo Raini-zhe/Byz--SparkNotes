@@ -1,0 +1,230 @@
+
+（1）
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
+
+保存数据时，加个时间吧：
+    val df = DateTimeFormatter.ofPattern("<MM-dd-yyy>hh-mm-ss")
+    val now = ZonedDateTime.now()
+    df.format(now)
+
+
+（2）
+assert的用法
+    val ova = new OneVsRest().setClassifier(new LogisticRegression)
+	assert(ova.getLabelCol === "label")
+	assert(ova.getPredictionCol === "prediction")
+
+
+(3)
+DataFrame转RDD
+	val termWeights = ldaModel.describeTopics.select("termWeights").collect().foreach { case r: Row =>
+	      val termWeights = r.getAs[Seq[Double]](0)
+	      if(termWeights.length == 3 && termWeights.forall(w => w >= 0.0 && w <= 1.0)){println("---")}
+	      println(termWeights)
+	    }
+
+
+(4) Long 转 ip
+
+
+  import org.apache.commons.lang.StringUtils
+  def ipv4FromLongToString(ip: Long): String =
+    if (ip >= 0 && ip <= 4294967295L) Array(ip >>> 24, (ip & 0x00FFFFFF) >>> 16, (ip & 0x0000FFFF) >>> 8, ip & 0x000000FF).mkString(".") else StringUtils.EMPTY
+
+  val ipv4Regex = """^(([1-9]?[0-9]|1[0-9]?[0-9]|2[0-4][0-9]|25[0-5])\.){3}([1-9]?[0-9]|1?[0-9]?[0-9]|2[0-4][0-9]|25[0-5])$""".r
+
+  // ipv4 convert from string to long
+  def ipv4FromStringToLong(ip: String): Long = {
+    val opt = ipv4Regex.findFirstIn(ip)
+    if (opt.isDefined) {
+      val ips = ip.split("\\.", -1)
+      (ips(0).toLong << 24) + (ips(1).toLong << 16) + (ips(2).toLong << 8) + ips(3).toLong
+    } else -1
+  }
+
+  def int2Ip(ip: Int): String = {
+    s"${(0 to 3).map(i ⇒ (ip >> 8 * i) & 0xFF).mkString(".")}"
+  }
+
+  sqlContext.udf.register("int2Ip", (phone: Int) => int2Ip(phone))
+  t_d.selectExpr("int2Ip(167773121)").show
+
+
+//
+
+
+  val t_d = spark.read.
+    format("csv").
+    option("header","true").
+    option("inferSchema", "false").
+    option("delimiter","|").
+    load("file:///home/raini/tt.txt")
+
+  //spark.sparkContext.textFile("")
+  // .flatMap(x => for (v <- IPUtil.ipv4FromStringToLong(x.split("\\|", -1)(0)) to IPUtil.ipv4FromStringToLong(x.split("\\|", -1)(1))) yield x + IPUtil.ipv4FromLongToString(v))
+  QSIP|ZZIP
+  167773121|167773125
+  167773135|167773140
+
+  t_d.rdd.map{ r:Row =>
+    (r.getAs[String](0), r.getAs[String](1))
+  }.flatMap(x => for (v <- ipv4FromStringToLong(x._1) to ipv4FromStringToLong(x._2)) yield (x._1, x._2, ipv4FromLongToString(v))).take(5)
+
+
+  t_d.rdd.map{ r:Row =>
+    (r.getAs[Long](0), r.getAs[Long](1))
+  }.map(x => for (v <- x._1.toLong to x._2.toLong) yield x :+ ipv4FromLongToString(v) :+ v.toString).take(20)
+
+
+
+  /////
+
+  def splitByAddr(id:String,name:String,addrs:String)={
+    val addrsList = addrs.split(",")
+    var resSeq = Seq[Row]()
+    for(t <- addrsList){
+      resSeq = resSeq :+ Row(id,name,t)
+    }
+    resSeq
+  }
+
+  def ip2str_list(l1: Long, l2: Long): String = {
+    var ip_list:scala.collection.mutable.ListBuffer[Long] = new scala.collection.mutable.ListBuffer[Long]
+    for (ip <- l1 to l2){
+      ip_list.append(ip)
+    }
+    ip_list.toList.mkString(",")
+  }
+  sqlContext.udf.register("ip2str_list", (ip1: Long, ip2:Long) => ip2str_list(ip1, ip2))
+
+  val tt = t_d.selectExpr("QSIP","ZZIP","ip2str_list(QSIP,ZZIP) as ip")
+
+
+  //////
+
+  val df1 = tt.rdd.flatMap(line =>
+  {var s = line.getAs[String]("ip");
+    var id = line.getAs[String]("ZZIP");
+    var name = line.getAs[String]("QSIP");
+    splitByAddr(id,name,s)
+  })
+  df1.collect().foreach(println)
+
+
+  /** -------------------------------------------------------------/ Long 2 ip
+    *
+    * */
+  def splitByAddr(id:String,name:String,addrs:String)={
+    val addrsList = addrs.split(",")
+    var resSeq = Seq[Row]()
+    for(t <- addrsList){
+      resSeq = resSeq :+ Row(id,name,t)
+    }
+    resSeq
+  }
+
+  def ip2str_list(l1: Long, l2: Long): String = {
+    var ip_list:scala.collection.mutable.ListBuffer[Long] = new scala.collection.mutable.ListBuffer[Long]
+    for (ip <- l1 to l2){
+      ip_list.append(ip)
+    }
+    ip_list.toList.mkString(",")
+  }
+  sqlContext.udf.register("ip2str_list", (ip1: Long, ip2:Long) => ip2str_list(ip1, ip2))
+  
+  val t_d = spark.read.
+    format("csv").
+    option("header","true").
+    option("inferSchema", "false").
+    option("delimiter","|").
+    load("file:///home/raini/tt.txt")
+  val tt = t_d.selectExpr("QSIP","ZZIP","ip2str_list(QSIP,ZZIP) as ip")
+  val df1 = tt.rdd.flatMap(line =>
+  {var s = line.getAs[String]("ip");
+    var id = line.getAs[String]("ZZIP");
+    var name = line.getAs[String]("QSIP");
+    splitByAddr(id,name,s)
+  })
+  df1.collect().foreach(println)
+
+
+  /** -------------------------------------------------------------/
+    *
+    * */
+
+
+
+
+(5)
+SPARK插入空值(需要指定类型Option[String])
+ val v:Option[String] = None
+
+赋值要Some类型
+Some[String]
+
+
+(6)
+ --------------- (聚类算法-实现诈骗号码相似的号码)
+在Mahout软件工具0.9版中实现的DM任务和算法:
+	频繁模式挖掘; RowSimilarityJob - 计算矩阵行之间的成对相似度; ConcatMatrices - 将2个矩阵或向量组合成一个矩阵; 搭配 - 在文本中找到标记的共同位置
+
+
+
+(7)
+-------------------(删除非单词)
+  def tokenize(text: String): Array[String] = {
+    // 
+    text.toLowerCase.replaceAll("[^a-zA-Z0-9\\s]", "").split("\\s+")
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#
+
+

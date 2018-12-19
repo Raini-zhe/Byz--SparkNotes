@@ -1,0 +1,77 @@
+梯度提升树回归 - It supports both continuous and categorical features.
+
+
+
+Parameter setters（类比随机森林）：
+
+    比决策树多三个设置方法：
+    def
+    （1）setLossType(value: String): 最小化逻辑损失函数. (case-insensitive) 分类只Supported: "logistic" (default = logistic)
+    （2）setMaxIter(value: Int): iterations (>= 0)
+    （3）setStepSize(value: Double): 步长参数（即学习率）在区间（0，1 ]缩小参数估计量的贡献。（default = 0.1）
+    （4）setSubsamplingRate(value: Double): 用于学习每个决策树的训练数据的分数，范围（0，1）。 (default = 1.0)
+
+    没有：
+            setProbabilityCol(value: String): 预测类的条件概率列
+            setRawPredictionCol(value: String): 所得结果表示为预测为每一类的得分，有多少类就有多少个得分，取得分最小的 则判别为该类。
+            setThresholds(value: Array[Double]): 多类分类调整预测每一类的概率阈值，参数p/t 的最大值计为预测类，p:原始类的概率，t：阈值。长度与类别数一致
+
+
+
+
+    def
+        setCheckpointInterval(value: Int): 设置检查点间隔参数（> = 1）或禁用（-1）。10意味着，每10次迭代缓存一次检查点。
+
+        setFeaturesCol(value: String):
+
+        setImpurity(value: String): Supported: "variance". (default = variance) 。分类用于信息增益计算的标准（不区分大小写）,Supported: "entropy" and "gini". (default = gini)
+
+        setLabelCol(value: String):
+
+        setLossType(value: String): 最小化逻辑损失函数.Supported: "squared" (L2) and "absolute" (L1) (default = squared)。 分类只Supported: "logistic" (default = logistic)
+
+        setMaxBins(value: Int): Must be >= 2 and >= number of categories in any categorical feature. (default = 32)。分裂特征的最大划分数量，每个桶尽可能包含越多相同的类别，表示越合理。每个特征分裂时,最大划分(桶)数量（用于连续属性离散化算法和选择如何分割在每个节点上的特征）。一个桶可包含多个类别特征，但是这些特征尽可能集中在一个桶内
+
+        setMaxDepth(value: Int):  (>= 0)(default = 5) 深度为0,意味着有1个子节点;深度为1,意味着内部节点+2个叶子节点。 对决策树的层数作出限制，它是分类器为了对样本进行分类所作的一连串判断的最大次数，有利于避免过拟合。
+
+        setMaxIter(value: Int): iterations (>= 0)
+
+        setMinInfoGain(value: Double): 在树节点拆分上要考虑的最小信息增益（Minimum information gain）.Should be >= 0.0. (default = 0.0)，可0.05..
+
+        setMinInstancesPerNode(value: Int): 分裂后每个孩子必须拥有的最小实例数。如果分裂导致左或右孩子少于mininstancespernode，分裂将被作为无效。Should be >= 1. (default = 1)
+
+        setPredictionCol(value: String):
+
+        setSeed(value: Long):
+
+        setStepSize(value: Double): 步长参数（即学习率）在区间（0，1 ]缩小参数估计量的贡献。（默认值= 0.1）
+
+        setSubsamplingRate(value: Double): 用于学习每个决策树的训练数据的分数，范围（0，1）。 (default = 1.0)
+
+
+                mllib中：
+                  val categoricalFeatures = Map(0 -> 2, 1 -> 2)//第0列有2个特征，第一列有2个类别特征  -- 可作为setMaxBins的参考
+
+
+专家级设置：
+    def
+        setCacheNodeIds(value: Boolean): 如果TRUE，该算法将缓存节点IDS为每个实例。缓存可以加快更深层次树的训练。用户可以设置缓存检查点间隔时长或禁用它checkpointinterval。（默认= FALSE）
+        setMaxMemoryInMB(value: Int): MB分配给直方图聚合的最大内存。如果太小，那么1个节点每次迭代都会被分割，并且它的聚合可能超过这个大小。（默认值= 256 MB）
+
+
+
+模型方法：
+    lazy val featureImportances: Vector  -- 估计每个特征的重要性。这从其他损失函数中推广了“Gini”的重要性
+
+
+模型评估：
+    // Select (prediction, true label) and compute test error.
+    val evaluator = new RegressionEvaluator()
+      .setLabelCol("label")
+      .setPredictionCol("prediction")
+      .setMetricName("rmse")
+    val rmse = evaluator.evaluate(predictions)
+    println("Root Mean Squared Error (RMSE) on test data = " + rmse)
+
+    val gbtModel = pipelineModel.stages(1).asInstanceOf[GBTRegressionModel]
+    println("Learned regression GBT model:\n" + gbtModel.toDebugString)

@@ -1,0 +1,470 @@
+随机森林是分类和回归最成功的机器学习方法之一。它是一种综合学习方法，它创建一组由一组树模型组成的模型。这种实现非常适合处理大规模数据，并建立并行分类的随机森林模型。
+
+主要思想是在自举训练样本上建立一些决策树，即通过从（单个）训练集中反复抽取样本。此外，而不是构建树只的特征，通常是随机的子集时考虑的所有功能
+，其中Dð是每次执行树节点的拆分测试时选择的功能数量。此过程去相关的树木，使之不易过度拟合。
+
+
+随机森林是决策树算法的一个变种升级，是用随机的方式建立一个森林，森林里面有很多的决策树组成，随机森林的每一棵决策树之间是没有关联的。
+在得到森林之后，当有一个新的输入样本进入的时候，就让森林中的每一棵决策树分别进行一下判断，看看这个样本应该属于哪一类（对于分类算法），
+然后看看哪一类被选择最多，就预测这个样本为那一类。随机森林可以既可以处理属性为离散值的量，比如ID3算法，也可以处理属性为连续值的量，比如C4.5算法。
+另外，随机森林还可以用来进行无监督学习聚类和异常点检测。
+
+The spark.ml implementation supports random forests for binary and multiclass classification and for regression, using both continuous and categorical features.
+（使用连续和分类的特征。）
+
+（决策树存在过拟合问题，需要归一化来消除）
+
+分类：目标为 类别型 特征
+回归：目标为 数值型 特征
+
+随机森林分别训练一组决策树，因此可以并行训练。该算法训练过程中注入随机性，使每个决策树都有点不同。从每颗树相结合的去预测，减少方差，提高测试数据的性能。
+
+
+Training
+    注入训练过程中的随机性包括：
+     采样原始数据集在每次迭代中得到不同的训练集（a.k.a. bootstrapping）。
+     考虑到不同的随机子集的功能在每个树节点分裂。
+
+Prediction
+    为了对一个新实例进行预测，随机森林必须从它的决策树集合中聚合预测。这种聚合在分类和回归是不同的。
+    分类：多数票。每棵树的预测都算作一个类的投票。获得最多选票的类则被预测为该标签。
+    回归：平均。每棵树预测为一个真实的值。平均值大的被预测为该标签。
+
+
+使用技巧
+    两个参数是最重要的,调优通常可以提高性能:
+
+    numTrees:增加树木的数量将减少预测的方差,提高模型的测试时间的准确性。训练时间与树数量呈线性增加。
+    maxDepth:对决策树的层数作出限制，它是分类器为了对样本进行分类所作的一连串判断的最大次数，有利于避免过拟合。
+            增加深度使模型更具表达性和强大。然而,深树需要更长时间来训练,也更容易过度拟合。
+            一般来说,它是可以接受的训练更深层的树木在使用随机森林比使用单一决策树。一棵树比随机森林更容易overfit(因为从平均方差减少多个树在森林里)。
+
+    接下来的两个参数通常不需要调优。然而,他们可以通过调优,加快训练。
+      subsamplingRate:这个参数指定大小的数据集用于训练每棵树在森林中,随着原始数据集的大小的一小部分。默认(1.0)建议,但减少这个分数可以加快训练。
+      featureSubsetStrategy:数量的功能作为候选人在每个树节点分裂。被指定为数量或函数总数的一小部分功能。减少这个数字将加快训练,但有时会影响性能,如果太低了。
+
+
+Bins：
+    对于连续的实数特征，在数据量很大的情况下，对每个可能取值进行（排序）成本就太大了，一个惯用的近似技巧——“箱化” （Binning，我们觉得取值太多了，一个个处理太麻烦，打包起来，处理就简单多了）。
+    然后以箱子为单位，根据每个箱子的最小值和最大值，可以确定划分边界，然后按照信息增益或者其他衡量方式确定最终分裂边界。（Bin个数最多就是所有取值的情况的个数，也就是N（相当于没有使用”箱化”技巧））
+    ：也就是说，原本的预测取值是连续的（需要排序）-需要找到一个合适的值作为预测值，箱化以后，对每个箱子计算最大最小值（即变成对每个箱子的值进行排序），取中间值作为分裂点。
+
+    对于类别特征...，对于二元分类问题，分裂点Split个数直接设为N?1，Bin的个数为N。
+    对于连续的实数特征，标准的做法是将输入进行排序，然后将每个输入或者前后两个输入的平均值即中间点作为分裂点。假设实数特征有N个不同训练的数据，那么分裂点Split的个数就是N。分割区间Bin的个数就是N+1
+    ：但是对于海量数据，或者一个无序的特征有太多的特征值，按照上面做法，就肯定吃不消了。所以一个近似的做法就是，提前为这样的实数特征确定好分裂区间的个数，也就是为什么在决策树设定参数中有maxBins这个参数的来由了。
+    1.对于·类别·特征如果特征值超过maxBins，那么将分裂箱子Bin的数量退化为特征值的个数。
+    2.对于·连续·的特征，如果不同训练特征少于maxBins，那么还是按照前面分析的做法，如果超过了，Bin的个数就设为maxBins，并采取尽量平均的方式选择切割点，使得每个Bin尽量包含相同个数的训练数据。如果训练数据实在太多，可以使用采样的方式，利用采样部分数据作为训练数据再使用上面的方法确定Split和Bin。
+    由于采取了分区间的操作和可能的采样手段，必然降低了决策树的预测精度，但是另一方面却可以大大提升训练速度。实际中据说这样的技巧也没损伤多少精度-:)。
+
+    决策树算法负责为每层生成可能的决策规则,比如在宠物店示例中,这些决策规则类似
+    “重量≥ 100”或者“重量≥ 500”。决策总是采用相同形式:对数值型特征,决策采用 特征
+    ≥ 值 的形式;对类别型特征,决策采用 特征在(值 1, 值 2,...)中 的形式。因此,要尝试的
+    决策规则集合实际上是可以嵌入决策规则中的一系列值。Spark MLlib 的实现把决策规则集
+    合称为“桶”(bin)。桶的数目越多,需要的处理时间越多但找到的决策规则可能更优。
+
+    什么因素会促使产生好的决策规则?直观上讲,好的决策规则应该通过目标类别值对样本
+    作出有意义的划分。比如,如果一个规则将 Covtype 数据集划分为两个子集,其中一个子
+    集的样本全部属于类别 1~3,第二个子集中的样本则都属于和类别 4~7,那么它就是一个
+    好规则,因为这个规则清楚地把一些类别和其他类别分开。如果样本集用一个决策规则划
+    分,划分前后每个集合各类型的不纯性程度没有改善,那么这个规则就没什么价值。沿着
+    该决策规则的分支走下去,每个目标类别的可能取值的分布仍然是一样的,因此实际上它
+    在构造可靠的分类器方面没有任何进步。
+
+
+
+特征选择
+    在于选取对训练数据具有分类能力的特征，这样可以提高决策树学习的效率。通常特征选择的准则是信息增益（或信息增益比、基尼指数等），每次计算每个特征的信息增益，并比较它们的大小，选择信息增益最大（信息增益比最大、基尼指数最小）的特征。
+
+熵（entropy）
+    它是表示随机变量不确定性的度量。熵越大，随机变量的不确定性就越大。
+
+信息增益（informational entropy）
+    表示得知某一特征后使得信息的不确定性减少的程度。简单的说，一个属性的信息增益就是由于使用这个属性分割样例而导致的期望熵降低。
+
+信息增益（Information Gain）：
+    衡量一个属性区分数据样本的能力。信息增益量越大，这个属性作为一棵树的根节点就能使这棵树更简洁，
+    比如说一棵树可以这么读成，如果风力弱，就去玩；风力强，再按天气、温度等分情况讨论，此时用风力作为这棵树的根节点就很有价值。
+    如果说，风力弱，再又天气晴朗，就去玩；如果风力强，再又怎么怎么分情况讨论，这棵树相比就不够简洁了。计算信息增益的公式需要用到“熵”（Entropy）。
+
+
+
+
+val dt = new DecisionTreeClassifier().set...
+
+
+Parameter setters：
+
+    比决策树多三个设置方法：
+    def
+    （1）setFeatureSubsetStrategy(value: String): 决策树每层的评估特征选择。在每个树节点上要考虑切分的特征数. Supported options:
+            "auto": Choose automatically for task: If numTrees == 1, set to "all." If numTrees > 1 (forest), set to "sqrt" for classification and to "onethird" for regression.
+            "all": use all features -- 实际中，决策规则不会考虑全部特征，只会考虑全部特征的一个子集。
+            "onethird": use 1/3 of the features
+            "sqrt": use sqrt(number of features)
+            "log2": use log2(number of features)
+            "n": when n is in the range (0, 1.0], use n * number of features. When n is in the range (1, number of features), use n features. (default = "auto")
+        这些不同的设置是基于以下参考：
+            log2: tested in Breiman (2001)
+            sqrt: recommended by Breiman manual for random forests
+            The defaults of sqrt (classification) and onethird (regression) match the R randomForest package.
+
+    （2）setNumTrees(value: Int): (default = 20)
+
+
+    （3）setSubsamplingRate(value: Double): 用于学习每个决策树的训练数据的分数，范围（0，1）。 (default = 1.0)
+
+
+
+    def
+        setCheckpointInterval(value: Int): 设置检查点间隔参数（> = 1）或禁用（-1）。10意味着，每10次迭代缓存一次检查点。
+
+        setFeaturesCol(value: String):
+
+        setImpurity(value: String): 用于信息增益计算的标准（不区分大小写）, Supported: "entropy" and "gini". (default = gini)
+
+        setLabelCol(value: String):
+
+        setMaxBins(value: Int): 好像默认32。分裂特征的最大划分数量，每个桶尽可能包含越多相同的类别，表示越合理。每个特征分裂时,最大划分(桶)数量（用于连续属性离散化算法和选择如何分割在每个节点上的特征）。一个桶可包含多个类别特征，但是这些特征尽可能集中在一个桶内
+
+        setMaxDepth(value: Int): (>= 0) 对决策树的层数作出限制，它是分类器为了对样本进行分类所作的一连串判断的最大次数，有利于避免过拟合。
+
+        setMinInfoGain(value: Double): 在树节点拆分上要考虑的最小信息增益（Minimum information gain）.Should be >= 0.0. (default = 0.0)，可0.05..
+
+        setMinInstancesPerNode(value: Int): 分裂后每个孩子必须拥有的最小实例数。如果分裂导致左或右孩子少于mininstancespernode，分裂将被作为无效。Should be >= 1. (default = 1)
+
+        setPredictionCol(value: String):
+
+        setProbabilityCol(value: String): 预测类的条件概率列
+
+        setRawPredictionCol(value: String): 所得结果表示为预测为每一类的得分，有多少类就有多少个得分，取得分最小的 则判别为该类。
+
+        setSeed(value: Long):
+
+        setThresholds(value: Array[Double]): 多类分类调整预测每一类的概率阈值，参数p/t 的最大值计为预测类，p:原始类的概率，t：阈值。长度与类别数一致
+
+
+专家级设置：
+    def
+        setCacheNodeIds(value: Boolean): 如果TRUE，该算法将缓存节点IDS为每个实例。缓存可以加快更深层次树的训练。用户可以设置缓存检查点间隔时长或禁用它checkpointinterval。（默认= FALSE）
+        setMaxMemoryInMB(value: Int): MB分配给直方图聚合的最大内存。如果太小，那么1个节点每次迭代都会被分割，并且它的聚合可能超过这个大小。（默认值= 256 MB）
+
+
+
+
+    val maxDepth: Int = 5
+    val maxBins: Int = 32
+    val minInstancesPerNode: Int = 1
+    val minInfoGain: Double = 0.0
+    val fracTest: Double = 0.2
+    val cacheNodeIds: Boolean = false
+    val checkpointDir: Option[String] = None
+    val checkpointInterval: Int = 10
+
+    val (training: DataFrame, test: DataFrame) =
+      MLUtils.loadDatasets("data/creditdata", fracTest)
+
+    val dt = new RandomForestClassifier()
+        .setFeaturesCol("features")
+        .setLabelCol("label")
+        .setMaxDepth(maxDepth)
+        .setMaxBins(maxBins)
+        .setMinInstancesPerNode(minInstancesPerNode)
+        .setMinInfoGain(minInfoGain)
+        .setCacheNodeIds(cacheNodeIds)
+        .setCheckpointInterval(checkpointInterval)
+
+
+
+val dtModel = dt.fit(dataSet)
+
+    dtModel.transform(dataset: Dataset[_]): DataFrame
+      得到：1.predicted labels as predictionCol of type Double
+           2.raw predictions (confidences) as rawPredictionCol of type Vector
+           3.probability of each class as probabilityCol of type Vector.
+
+
+预测数据：
+    val predictions = dtModel.transform(testData)
+
+
+模型评估：
+    val evaluator = new MulticlassClassificationEvaluator()
+      .setLabelCol("indexedLabel")
+      .setPredictionCol("prediction")
+      .setMetricName("accuracy")
+    val accuracy = evaluator.evaluate(predictions)
+    println("Test Error = " + (1.0 - accuracy))
+
+    val model = pipeline.fit(trainingData)
+
+    val treeModel = model.stages(2).asInstanceOf[DecisionTreeClassificationModel]
+    println("Learned classification tree model:\n" + treeModel.toDebugString) //模型完整描述
+
+    混淆矩阵...
+
+
+
+下面是mllib的例子（与上面无关）：
+
+
+
+/*
+ * spark-shell --master spark://biyuzhe:7077 \
+                --driver-memory 2g \
+                --executor-memory 3g \
+                --executor-cores 1 \
+                --jars /home/raini/spark/lib/mysql-connector-java-5.1.38-bin.jar , /home/raini/spark/lib/jblas-1.2.3.jar
+ */
+
+import org.apache.spark.mllib.evaluation.MulticlassMetrics
+import org.apache.spark.mllib.linalg.Vectors
+import org.apache.spark.mllib.regression.LabeledPoint
+import org.apache.spark.mllib.tree.model.DecisionTreeModel
+import org.apache.spark.mllib.tree.{DecisionTree, RandomForest}
+import org.apache.spark.rdd.RDD
+import org.apache.spark.storage.StorageLevel
+import org.apache.spark.{SparkConf, SparkContext}
+
+object RunRDF {
+
+  def main(args: Array[String]): Unit = {
+    val sc = new SparkContext(new SparkConf().setAppName("RDF"))
+
+    val rawData = sc.textFile("file:///home/raini/data/Spark_Advanced_Data_Analysis/Chapter 4/covtype.data")
+
+    val data = rawData.map { line =>
+      val values = line.split(',').map(_.toDouble)
+      val featureVector = Vectors.dense(values.init)
+      val label = values.last - 1
+      LabeledPoint(label, featureVector)
+    }
+
+    // Split into 80% train, 10% cross validation, 10% test
+    val Array(trainData, cvData, testData) = data.randomSplit(Array(0.8, 0.1, 0.1))
+    trainData.persist(StorageLevel.MEMORY_AND_DISK)//.cache()
+    cvData.persist(StorageLevel.MEMORY_AND_DISK)//.cache()
+    testData.persist(StorageLevel.MEMORY_AND_DISK)//.cache()
+
+    simpleDecisionTree(trainData, cvData)
+    randomClassifier(trainData, cvData)
+    evaluate(trainData, cvData, testData)
+    evaluateCategorical(rawData)
+    evaluateForest(rawData)
+
+    trainData.unpersist()
+    cvData.unpersist()
+    testData.unpersist()
+  }
+
+  /** Build a simple default DecisionTreeModel 必须指明数据集中目标的取值个数,也就是 7
+    *  Map 保存类别型特征的信息,Map 中元素的键是特在输入向量 Vector 中的下标, Map 中元素的值是类别型特征的不同取值个数。
+    *  后面在解释参数值 gini 、最大深度 4 和最大桶数 100 */
+  def simpleDecisionTree(trainData: RDD[LabeledPoint], cvData: RDD[LabeledPoint]): Unit = {
+    val model = DecisionTree.trainClassifier(trainData, 7, Map[Int,Int](), "gini", 4, 100)
+
+    val metrics = getMetrics(model, cvData)
+
+    println("混淆矩阵(Confusion Matrix): " + metrics.confusionMatrix + "\n") // 每一列的总数表示预测为该类别的数据的数目；每一行代表了数据的真实归属类别。 解释http://baike.baidu.com/link?url=j2IbQePWTuAAPVE8y3WPsr_dmTIao63c75w5cc-qXVrWmvS4dSX6kxB-9LckR6xKzjEholAY1Dx_vb-k8u0UschTk0RYGRYQl1hDNFgjnBstzBog6AuMwj10MA_GqRtuEendZmsxC3VHu-5Jz8eXWYq2T2AQKbTHZOiua7zy3FpTH1LFRqxNurnPeagcsSfj
+    println("精确度(precision): " + metrics.precision + "\n") // 精确度(precision)
+    /** [精确度+召回率]
+    .大约70%样本的分类是正确的。这个比例通常被称为准确度(accuracy),在Spark的 MulticlassMetrics 指标中称为精确度(precision),意思差不多。
+    .精确度(precision)是二元分类问题中一个常用的指标。二元分类问题中的目标类
+     别只有两个可能的取值,而不是多个取值,其中一个类代表正,另一类代表负,
+     精确度就是被标记为“正”而且确实是“正”的样本占所有标记为“正”的样本的比例。
+    .和精确度一起出现的还有另一个指标召回率(recall).召回率是被分类器标记为“正”的所有样本与所有本来就是“正”的样本的比率。
+    .比如,假设数据集有 50 个样本,其中 20 个为正。分类器将 50 个样本中的 10 个标记为“正”
+     ,在这 10 个被标记为“正”的样本中,只有 4 个确实是“正”(也就是 4 个分类正确),所以这里的精确度为 4/10=0.4,召回率为 4/20=0.2。
+
+     我们可以把这些概念应用到多元分类问题,把每个类别单独视为 “正”,所有其他类型视为“负”。
+     比如,要计算每个类别相对其他类别的精确度,请看如下代码:  **/
+
+    (0 until 7).map(
+      category => (metrics.precision(category), metrics.recall(category))
+    ).foreach(println)
+  }
+
+  // MulticlassMetrics 以不同方式计算分类器预测质量的标准指标,
+  // BinaryClassificationMetrics 它提供类似MulticlassMetrics的评价指标实现,不过仅适用常见的类别型目标只有两个可能取值的情况。由于这里目标类别的可能取值有多个,所以我们不能直接使用BinaryClassificationMetrics 。
+  def getMetrics(model: DecisionTreeModel, data: RDD[LabeledPoint]): MulticlassMetrics = {
+    val predictionsAndLabels = data.map(example =>
+      (model.predict(example.features), example.label)
+    )
+    new MulticlassMetrics(predictionsAndLabels)
+  }
+
+
+  // ➌ 把训练集和 CV 集中的某个类别的概率结成对,相乘然后相加。
+  def randomClassifier(trainData: RDD[LabeledPoint], cvData: RDD[LabeledPoint]): Unit = {
+    val trainPriorProbabilities = classProbabilities(trainData)
+    val cvPriorProbabilities = classProbabilities(cvData)
+    val accuracy = trainPriorProbabilities.zip(cvPriorProbabilities).map { // ➌
+      case (trainProb, cvProb) => trainProb * cvProb
+    }.sum
+    println("准确度：" + accuracy + "\n") // 得到随机猜测的准确度为 37%,所以我们前面得到 70% 的准确度看起来还不错。
+  }
+  /** 按照类别在训练集中出现的比例来预测类别,我们来构建一个“分类器”。每次分类的正
+      确度将和一个类型在 CV 集中出现的次数成正比。比如,一个类别在训练集中占 20%,在
+      CV 集中占 10%,那么该类别将贡献 10% 的 20%,即 2% 的总体准确度。通过按 20% 的时
+      候将样本猜测为该类,CV 集样本中有 10% 的样本会被猜对。
+      *
+      * 将所有类别在训练集和 CV集出现的概率相乘,然后把结果相加,我们就得到了一个对准确度的评估 */
+  def classProbabilities(data: RDD[LabeledPoint]): Array[Double] = {
+    // Count (category,count) in data ➊ 计算数据中每个类别的样本数:(类别,样本数)
+    val countsByCategory = data.map(_.label).countByValue()
+    // order counts by category and extract counts ➋ 对类别的样本数进行排序并取出样本数。
+    val counts = countsByCategory.toArray.sortBy(_._1).map(_._2)
+    counts.map(_.toDouble / counts.sum) // 每一类样本所占百分比
+  }
+
+
+
+  /** [构造超参数] 取不同值时的不同组合的模型,然后用某个指标评估每个组合结果的质量,通过这种方式来选择超参数值
+    *
+好规则把训练集数据的目标值分为相对是同类或“纯”(pure)的子集。选择
+最好的规则也就意味着最小化规则对应的两个子集的不纯性(impurity)。不纯性有两种
+常 用 的 度 量 方 式: Gini 不 纯 度(http://en.wikipedia.org/wiki/Decision_tree_learning#Gini_impurity)或熵(http://en.wikipedia.org/wiki/Entropy_(information_theory))
+    *
+    * Gini 不纯度直接和随机猜测分类器的准确度相关。如果子数据集中所有样本都属于一个类别,则 Gini 不纯度的值为 0,因为这个子数据集完全是“纯”的。
+    *      当子数据集中的样本来自 N 个不同的类别时,Gini 不纯度的值大于 0,并且在每个类别的样本数都相同时达到最大,也就是最不纯的情况。
+    * 熵 是另一种度量不纯性的方式,它来源于信息论,是对不确定性的度量。将其定义为离散随机事件出现的概率，一个系统越是有序，信息熵就越低，反之一个系统越是混乱，它的信息熵就越高。所以信息熵可以被认为是系统有序化程度的一个度量。
+    *      熵代表了子集中目标取值集合的不确定程度。如果子集只包含一个类别,则是完全确定的,熵为 0。
+    *      它实际上度量的是信息,因此在使用熵的决策树中,我们也常说决策规则的信息增益。
+    */
+
+  def evaluate(
+      trainData: RDD[LabeledPoint],
+      cvData: RDD[LabeledPoint],
+      testData: RDD[LabeledPoint]): Unit = {
+
+    val evaluations =
+      for (impurity <- Array("gini", "entropy");
+           depth    <- Array(1, 20);
+           bins     <- Array(10, 300))
+        yield {
+          val model = DecisionTree.trainClassifier(
+            trainData, 7, Map[Int,Int](), impurity, depth, bins)
+          val accuracy = getMetrics(model, cvData).precision
+          ((impurity, depth, bins), accuracy)
+        }
+
+    println("evaluation1:\n")
+    evaluations.sortBy(_._2).reverse.foreach(println)
+
+    /**
+要想真正评估这个最佳模型在将来的样本上的表现,当然需要在没有用于训练的样本上进
+行评估。但是,我们也需要避免使用在评估环节中用过的 CV 集样本。这也就是需要把第
+三个子集即测试集保留在一边的原因。最后一步,用得到的超参数同时在训练集和 CV 集
+上构造模型并且像前面那样进行评估: */
+    val model = DecisionTree.trainClassifier(
+      trainData.union(cvData), 7, Map[Int,Int](), "entropy", 20, 300)
+    println("evaluation2:\n")
+    println(getMetrics(model, testData).precision)
+    println("evaluation3:\n")
+    println(getMetrics(model, trainData.union(cvData)).precision)
+  }
+
+
+  /** [重谈类别型特征]
+ 参数取为空 Map() ,则表示算法不需要把任何特征作为类别型,也就是说所有特征都是数
+值型的。实际上,Spark MLlib 实现中所有特征都是数值,但概念上其中某些是类别型特
+征。如前所述,如果简单地把类别型变量当作数值型对待,将其映射到不同的数字,这种
+做法是错误的,原因在于算法会试图从一个没有意义的大小顺序中学习。
+好在,这里的类别型特征已经用 one-hot 方式编码成了多个二元的 0/1 值。 把这些单个的特
+征当作数值型来处理并没有什么问题,因为任何基于数值型特征的决策规则都需要选择 0
+或 1 作为其阈值,由于所有的阈值都是 0 或 1,所以都是等价的。*/
+  def unencodeOneHot(rawData: RDD[String]): RDD[LabeledPoint] = {
+    rawData.map { line =>
+      val values = line.split(',').map(_.toDouble)
+      // Which of 4 "wilderness" features is 1
+      val wilderness = values.slice(10, 14).indexOf(1.0).toDouble
+      // Similarly for following 40 "soil" features
+      val soil = values.slice(14, 54).indexOf(1.0).toDouble
+      // Add derived features back to first 10
+      val featureVector = Vectors.dense(values.slice(0, 10) :+ wilderness :+ soil)
+      val label = values.last - 1
+      LabeledPoint(label, featureVector)
+    }
+  }
+
+  def evaluateCategorical(rawData: RDD[String]): Unit = {
+
+    val data = unencodeOneHot(rawData)
+
+    val Array(trainData, cvData, testData) = data.randomSplit(Array(0.8, 0.1, 0.1))
+    trainData.cache()
+    cvData.cache()
+    testData.cache()
+
+    val evaluations =
+      for (impurity <- Array("gini", "entropy");
+           depth    <- Array(10, 20, 30);
+           bins     <- Array(40, 300))
+      yield {
+        // Specify value count for categorical features 10, 11
+        val model = DecisionTree.trainClassifier(
+          trainData, 7, Map(10 -> 4, 11 -> 40), impurity, depth, bins)
+        val trainAccuracy = getMetrics(model, trainData).precision
+        val cvAccuracy = getMetrics(model, cvData).precision
+        // Return train and CV accuracy
+        ((impurity, depth, bins), (trainAccuracy, cvAccuracy))
+      }
+
+    evaluations.sortBy(_._2._2).reverse.foreach(println)
+
+    val model = DecisionTree.trainClassifier(
+      trainData.union(cvData), 7, Map(10 -> 4, 11 -> 40), "entropy", 30, 300)
+    println(getMetrics(model, testData).precision)
+
+    trainData.unpersist()
+    cvData.unpersist()
+    testData.unpersist()
+  }
+
+  /** [随机森林]
+    * 最好树不只有一棵,而是应该有很多棵,每一棵都能对正确目标值给出合
+      理、[独立]且互不相同的估计。这些树的集体平均预测应该比任一个体预测更接近正确答
+      案。正是由于决策树构建过程中的随机性,才有了这种独立性,这就是随机决策森林的关键所在。 */
+  def evaluateForest(rawData: RDD[String]): Unit = {
+
+    val data = unencodeOneHot(rawData)
+
+    val Array(trainData, cvData) = data.randomSplit(Array(0.9, 0.1))
+    trainData.cache()
+    cvData.cache()
+
+    val forest = RandomForest.trainClassifier(
+      /**构造 20 棵决策树,特征决策树每层的评估特征选择策略,这里设为 "auto" (自动)。
+        * 随机决
+      策森林在实现过程中决策规则不会考虑全部特征,而只考虑全部特征的一个子集。特征选
+      择策略参数控制算法如何选择该特征子集。只检查少数特征速度明显要快,并且由于速度
+      快,随机决策森林才得以构造多棵决策树。
+      但是,只考虑全部特征的一个子集,这种做法也使个体决策树的决策更加独立,因此决策森林作为整体往往更不会产生过拟合问题。
+
+        由于决策树通常在全体训练数据的一个子集上构造,可以用剩余数据对其进行内部交叉验
+      证,因此随机决策森林也可以顺便评估其准确度,尽管 Spark MLlib 还没有对该功能提供
+      直接支持。这意味着随机决策森林甚至能知道其内部哪棵决策树是最准确的,因而可以增加其权重。*/
+      trainData, 7, Map(10 -> 4, 11 -> 40), 20, "auto", "entropy", 30, 300)
+
+    val predictionsAndLabels = cvData.map(example =>
+      (forest.predict(example.features), example.label)
+    )
+    println(new MulticlassMetrics(predictionsAndLabels).precision)
+
+    val input = "2709,125,28,67,23,3224,253,207,61,6094,0,29"
+    val vector = Vectors.dense(input.split(',').map(_.toDouble))
+    println(forest.predict(vector))
+  }
+
+}
+
+/** 当然,用 Covtype 数据集预测森林植被类型只是预测问题的一种类型,现实中我们还有其
+他的预测问题。比如,有些问题要求预测连续型的数值,而不是类别型值。对于这类回归
+问题,我们要使用 trainRegressor() 方法,而不是本章中介绍的 trainClassifier() 。
+
+再者,分类和回归算法不只包括决策树和决策森林,Spark MLlib 实现的算法也不限于决策树和决策森林。
+
+对分类问题,Spark MLlib 提供的实现包括:
+• 朴素贝叶斯(http://en.wikipedia.org/wiki/Naive_Bayes_classifier)
+• 支持向量机(http://en.wikipedia.org/wiki/Support_vector_machine)
+• 逻辑回归(http://en.wikipedia.org/wiki/Logistic_regression)
+是的,逻辑回归是一种分类技术。逻辑回归底层通过预测类别的连续型概率函数来进行分类。 **/

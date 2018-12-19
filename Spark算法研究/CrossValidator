@@ -1,0 +1,167 @@
+（2017.04.13）- 基于Pipeline、交叉验证、ParamMap的模型选择和超参数调优
+
+
+将整个数据集划分为训练集和测试集
+      //注意training集将用于Cross Validation,而test集将用于最终模型的评估
+      //在traning集中，在Croos Validation时将进一步划分为K份，每次留一份作为
+      //Validation，注意区分：ratings.randomSplit() 分出的Test集 和 K折留下验证的那一份完全不是一个概念，也起着完全不同的作用，（一定不要相混淆）
+      val ratings = spark.createDataFrame(ratingsRDD, Rating.class)
+      val splits = ratings.randomSplit(Array(0.8, 0.2))
+      val training = splits._1
+      val test = splits._2
+
+
+CrossValidator：
+
+  // CrossValidator 需要一个Estimator,一组Estimator ParamMaps, 和一个Evaluator.
+  // （1）Pipeline作为Estimator;
+  // （2）定义一个RegressionEvaluator作为Evaluator，并将评估标准设置为“rmse”均方根误差-(ALS等回归算法的评估标准)
+  // （3）设置ParamMap
+  // （4）设置numFolds
+
+  val cvModel = new CrossValidator()
+      .setEstimator(pipeline)
+      .setEvaluator(new RegressionEvaluator())
+      .setLabelCol("rating")
+      .setPredictionCol("predict_rating")
+      .setMetricName("rmse")
+      .setEstimatorParamMaps(paramGrid)
+      .setNumFolds(5)
+
+
+运行交叉检验，自动选择最佳的参数组合
+      val cvModel=cv.fit(training)
+      //保存模型
+      cvModel.save("/home/hadoop/spark/cvModel_als.modle")
+      //println("numFolds: "+cvModel.getNumFolds())
+
+
+          /** 提取最好的模型参数 */
+          val bestPipeline = cvModel.bestModel.parent.asInstanceOf[Pipeline]
+          val stage1 = bestPipeline.getStages(1)
+          stage1.extractParamMap().get(stage1.getParam("numFeatures")).getOrElse(0).toString
+
+          val stage2 = bestPipeline.getStages(2)
+          stage2.extractParamMap().get(stage2.getParam("regParam"))
+
+
+      如果你只是想知道最佳参数是多少，并不是需要在上下文中使用，那还有一个更简单的方法。
+      修改log4j的配置，添加：
+          log4j.logger.org.apache.spark.ml.tuning.TrainValidationSplit=INFO
+          log4j.logger.org.apache.spark.ml.tuning.CrossValidator=INFO
+
+
+
+cvModel 的一些方法：
+
+      cvModel.extractParamMap()  // 查看全部参数
+
+      cvModel.bestModel         // 最好的模型
+      cvModel.bestModel.extractParamMap()
+      cvModel.bestModel.parent  // 好像都没有结果出来（或许是我的结果都不好？）
+
+      cvModel.avgMetrics        // 参数对应的平均度量
+      cvModel.avgMetrics.length
+                                // cvModel.avgMetrics.length=cvModel.getEstimatorParamMaps.length
+                                // cvModel.avgMetrics与cvModel.getEstimatorParamMaps中的元素一一对应
+      cvModel.getEstimatorParamMaps.length
+      cvModel.getEstimatorParamMaps   // 参数组合的集合
+
+      cvModel.getEvaluator.extractParamMap()  // 评估的参数
+      cvModel.getEvaluator.isLargerBetter    // 评估的度量值是大的好，还是小的好
+
+      cvModel.getNumFolds   // 交叉验证的折数
+
+
+
+Test数据集上结果评估
+      val predictions=cvModel.transform(test)
+
+      val evaluator = new RegressionEvaluator()
+        .setMetricName("rmse")//RMS Error
+        .setLabelCol("rating")
+        .setPredictionCol("predict_rating")
+
+      val rmse = evaluator.evaluate(predictions)
+      println("RMSE @ test dataset " + rmse)
+      //Output: RMSE @ test dataset 0.943644792277118
+
+
+
+
+-//###########################--------实例：（http://www.cnblogs.com/wwxbi/p/6150352.html）
+
+      val colArray = Array("race", "poverty", "smoke", "alcohol", "agemth", "ybirth", "yschool", "pc3mth")
+
+      val assembler = new VectorAssembler().setInputCols(colArray).setOutputCol("features")
+
+      val vecDF: DataFrame = assembler.transform(data)
+
+      val Array(trainingDF, testDF) = vecDF.randomSplit(Array(0.7, 0.3))
+
+      // 建立生存回归模型
+      val AFT = new AFTSurvivalRegression().setFeaturesCol("features").setLabelCol("label").setCensorCol("censor").fit(trainingDF)
+
+      // 设置管道
+      val pipeline = new Pipeline().setStages(Array(AFT))
+
+      // 设置参数网格
+      val paramGrid = new ParamGridBuilder().addGrid(AFT.maxIter, Array(100, 500, 1000)).addGrid(AFT.tol, Array(1E-2, 1E-6)).build()
+
+      // 选择(prediction, true label)，计算测试误差。
+      // 注意RegEvaluator.isLargerBetter，评估的度量值是大的好，还是小的好，系统会自动识别
+      val RegEvaluator = new RegressionEvaluator().setLabelCol(AFT.getLabelCol).setPredictionCol(AFT.getPredictionCol).setMetricName("rmse")
+
+      // 设置交叉验证
+      val cv = new CrossValidator().setEstimator(pipeline).setEvaluator(RegEvaluator).setEstimatorParamMaps(paramGrid).setNumFolds(3)
+
+      // 执行交叉验证，并选择出最好的参数集
+      val cvModel = cv.fit(trainingDF)
+
+      // 查看全部参数
+      cvModel.extractParamMap()
+      // cvModel.avgMetrics.length=cvModel.getEstimatorParamMaps.length
+      // cvModel.avgMetrics与cvModel.getEstimatorParamMaps中的元素一一对应
+      cvModel.avgMetrics.length
+      cvModel.avgMetrics // 参数对应的平均度量
+
+      cvModel.getEstimatorParamMaps.length
+      cvModel.getEstimatorParamMaps // 参数组合的集合
+
+      cvModel.getEvaluator.extractParamMap()  // 评估的参数
+
+      cvModel.getEvaluator.isLargerBetter // 评估的度量值是大的好，还是小的好
+      cvModel.getNumFolds // 交叉验证的折数
+
+      //################################
+      // 测试模型
+      val predictDF: DataFrame = cvModel.transform(testDF).selectExpr(
+        //"race","poverty","smoke","alcohol","agemth","ybirth","yschool","pc3mth", "features",
+        "label", "censor",
+        "round(prediction,2) as prediction").orderBy("label")
+      predictDF.show
+
+      spark.stop()
+
+
+-//###########################--------一些概念：
+
+
+交叉验证 分类：一般分为三类：double-fold CV即经常所说的2折交叉；10-fold交叉和LOO（leave one out）CV即留一法交叉。
+
+    2折：将原始数据集DataSet均分为两份：一份作为训练集，即trainingSet，一份作为测试集，即testingSet，然后用训练集去做训练，用测试集去验证；之后再将训练集作为测试集，测试集作为训练集进行迭代一次，将两次所得的误差经行处理作为总体数据的预测误差。（注：这里强调一点，就是数据集一定要均分为两份，理由是：作为训练集，数据量一定要不小于测试集，所以在迭代的过程中，使得数据不出现错误情况，必须均分。）
+
+    10折：交叉检验最常见，是因为通过利用大量数据集、使用不同学习技术进行的大量试验，表明10折是获得最好误差估计的恰当选择。(10-fold cross validation)，将数据集分成10份，轮流将其中9份做训练1份做验证，10次的结果的均值作为对算法精度的估计。也有说5折/20折效果=10折。
+
+    K-折：（在这里说下K-折）是在将数据集分成K个子集，K个子集中得一个作为测试集，而其余的K-1个数据集作为训练集，最后对K个数据子集的错误计算均值，K次迭代验证是对监督学习算法的结果进行评估的方法，数据集的划分一般采用等均分或者随机划分。【来自邵峰晶等编著《数据挖掘原理与算法》中国水利水电出版社】
+
+    LOO：这个方法是K折的一种特列，就是把数据分为N份，其实每一份都是一个样本，这样迭代N次，计算最后的误差来作为预测误差。
+
+度量方法：在以上的交叉验证的最后都提到了数据误差，因为没验证一次都有一次数据误差，经行K折验证，进行迭代K次，这K次误差的处理也有不同的方法，也就是度量方法，比如你取平均值ME，或者方差等都是可以的，还有平均标准误差等，都可以作为最后的验证误差。
+
+
+
+交叉检验常用于分析模型的泛化能力，提高模型的稳定。相对于手工探索式的参数调试，交叉验证更具备统计学上的意义。
+  在Spark中，Cross Validation和ParamMap（“参数组合”的Map）结合使用。具体做法是，针对某有特定的Param组合，CrossValidator计算K （K 折交叉验证）个评估分数的平均值。然后和其它“参数组合”CrossValidator计算结果比较，完成所有的比较后，将最优的“参数组合”挑选出来，这“最优的一组参数”将用在整个训练数据集上重新训练(re-fit)，得到最终的Model。
+  也就是说，通过交叉验证，找到了最佳的”参数组合“，利用这组参数，在整个训练集上可以训练（fit）出一个泛化能力强，误差相对最小的的最佳模型。
+  很显然，交叉验证计算代价很高，假设有三个参数：参数alpha有3中选择，参数beta有4种选择，参数gamma有4中选择，进行10折计算，那么将进行（3×4×4）×10=480次模型训练。

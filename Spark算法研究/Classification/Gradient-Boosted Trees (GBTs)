@@ -1,0 +1,165 @@
+
+注：Multiclass labels are not currently supported. For multiclass problems, please use decision trees or Random Forests.
+   spark.ml/mllib GBTs 只支持 binary分类 and 回归, using both continuous and categorical features.
+
+梯度提高树（GBTs）是决策树的集合，是一个流行的分类和回归的方法，基于决策树，类似随机森林。 GBT迭代地训练决策树以便使损失函数最小化。
+
+
+GBDT的两个版本：
+
+（1）残差版本
+　  残差其实就是真实值和预测值之间的差值，在学习的过程中，首先学习一颗回归树，然后将“真实值-预测值”得到残差，再把残差作为一个学习目标，学习下一棵回归树，依次类推，直到残差小于某个接近0的阀值或回归树数目达到某一阀值。其核心思想是每轮通过拟合残差来降低损失函数。
+　　总的来说，第一棵树是正常的，之后所有的树的决策全是由残差来决定。
+
+（2）梯度版本
+　　与残差版本把GBDT说成一个残差迭代树，认为每一棵回归树都在学习前N-1棵树的残差不同，Gradient版本把GBDT说成一个梯度迭代树，（使用梯度下降法求解），认为每一棵回归树在学习前N-1棵树的梯度下降值。总的来说两者相同之处在于，都是迭代回归树，都是累加每颗树结果作为最终结果（Multiple Additive Regression Tree)，每棵树都在学习前N-1棵树尚存的不足，从总体流程和输入输出上两者是没有区别的；
+
+两者的不同：
+    主要在于每步迭代时，是否使用Gradient（梯度）作为求解方法。前者不用Gradient而是用残差—-残差是全局最优值，Gradient是局部最优方向*步长，即前者每一步都在试图让结果变成最好，后者则每步试图让结果更好一点。
+两者优缺点：
+    看起来前者更科学一点–有绝对最优方向不学，为什么舍近求远去估计一个局部最优方向呢？
+    原因在于灵活性。前者最大问题是，由于它依赖残差，cost function一般固定为反映残差的均方差，因此很难处理纯回归问题之外的问题。而后者求解方法为梯度下降，只要可求导的cost function都可以使用（使用一种代价函数作为性能评估标准）。
+
+
+Spark2.1中GBDT
+GBDT的优点
+　　GBDT和随机森林一样，都具备决策树的一些优点：
+　　(1)可以处理类别特征和连续特征
+　　(2)不需要对数据进行标准化预处理
+　　(3)可以分析特征之间的相互影响
+　　值得注意的是，Spark中的GBDT目前还不能处理多分类问题，仅可以用于二分类和回归问题。（Spark随机森林可以处理多分类问题）　
+
+
+
+
+GBDT与 随机森林应用时的对比
+　　GBDT和随机森林虽然都是决策树的组合算法，但是两者的训练过程还是很不相同的。
+　　GBDT训练是每次一棵，一棵接着一棵（串行），因此与随机森林并行计算多棵树相比起来，会需要更长的训练时间。
+　　在GBDT中，相对于随机森林而言（随机森林中的树可以不做很多的剪枝），一般会选择更浅（depth更小）的树，这样运算时间会减少。
+　　随机森林更不容易过拟合，而且森林中包含越多的树似乎越不会出现过拟合。用统计学的语言来讲，就是说越多的树包含进来，会降低预测结果的方差（多次预测结果会更加稳定）。
+   但是GBDT则恰好相反，包含预测的树（即迭代的次数越多），反而会更倾向于过拟合，用统计学的语言来讲，就是GBDT迭代次数的增加减少的是偏差（预测结果和训练数据label之间的差异）。（偏差和方差这两个概念是不同的概念）
+　　随机森林参数相对更容易调试一些，这是由于随着所包含的决策树的个数增加，其预测效果一般是单调的向好的方向变。而GBDT则不同，一开始预测表现会随着树的数目增大而变好，但是到一定程度之后，反而会随着树的数目增加而变差。
+　　总而言之，这两种算法都还是非常有效的算法，如何选择取决于实际的数据。
+
+   偏差：又称为表观误差，是指个别测定值与测定的平均值之差，它可以用来衡量测定结果的精密度高低
+   标准差(Standard Deviation)： 各数据偏离平均数的距离(离均差)的平均数,它是离差平方和平均后的方根。用σ表示。因此,标准差也是一种平均数
+   方差(Variance)：和标准差是测度数据变异程度的最重要、最常用的指标。衡量随机变量或一组数据时离散程度的度量。概率论中方差用来度量随机变量和其数学期望（即均值）之间的偏离程度。
+
+
+
+偏差和方差的区别：
+　　偏差：描述的是预测值（估计值）的期望与真实值之间的差距。偏差越大，越偏离真实数据。
+　　方差：描述的是预测值的变化范围，离散程度，也就是离其期望值的距离。方差越大，数据的分布越分散。
+
+
+关键参数
+　　有三个关键参数需要仔细分析：loss，numIterations，learningRate。可以通过下面的方式设置
+//定义GBTClassifier，注意在Spark中输出（预测列）都有默认的设置，可以不自己设置
+      val gbtClassifier=new GBTClassifier()
+                            .setLabelCol("indexedLabel")//输入label
+                            .setFeaturesCol("indexedFeatures")//输入features vector
+                            .setMaxIter(MaxIter)//最大迭代次数
+                            .setImpurity("entropy")//or "gini"
+                            .setMaxDepth(3)//决策树的深度
+                            .setStepSize(0.3)//范围是(0, 1]
+                            .setSeed(1234); //可以设一个随机数种子点
+
+
+使用技巧：
+  loss（损失函数的类型）
+  　　Spark中已经实现的损失函数类型有以下三种，注意每一种都只适合一类问题，要么是回归，要么是分类。
+  　　分类只可选择 Log Loss，回归问题可选择平方误差和绝对值误差。分别又称为L2损失和L1损失。绝对值误差（L1损失）在处理带有离群值的数据时比L2损失更加具有鲁棒性。
+      （Log Loss）-	Classification	  -（Twice binomial negative log likelihood.
+      （Squared Error）-	Regression	-（Also called L2 loss. Default loss for regression tasks.
+      （Absolute Error）-	Regression	-（Also called L1 loss. Can be more robust to outliers than Squared Error（可以更强度的放大误差）.
+
+  numIterations（迭代次数）
+  　　GBDT迭代次数，每一次迭代将产生一棵树，因此numIterations也是算法中所包含的树的数目。增加numIterations会提高训练集数据预测准确率（注意是训练集数据上的准确率哦）。但是相应的会增加训练的时间。如何选择合适的参数防止过拟合，一定需要做验证。将数据分为两份，一份是训练集，一份是验证集。
+  　　随着迭代次数的增加，一开始在验证集上预测误差会减小，迭代次数增大到一定程度后误差反而会增加，那么通过准确度vs.迭代次数曲线可以选择最合适的numIterations。
+
+  learningRate（学习率）
+  　　这个参数一般不需要调试，如果发现算法面对某个数据集，变现得极其不稳定，那么就要减小学习率再试一下，一般会有改善（稳定性变好）。小的学习率（步长）肯定会增加训练的时间。
+
+  algo（算法）
+      The algorithm or task (classification vs. regression) is set using the tree [Strategy] parameter.
+
+
+  1.GDBT中的决策树要设置浅一些 ，训练时间随maxDepth增加而增加，但不是线性增加。
+     两种不纯：impurityType = gini， entropy
+
+  2.学习率（步长）：学习率也会影响预测准确率，设置太大精度会降低。
+     设置一个非常小的学习率=0.05，逐步增加弱分类器的数目 ，可以看出学习率很小时，的确需要很多的弱分类器才能得到较好的结果。但是预测效果一直在变好。
+     学习率很大时，较少的n_estimators 值就可以达到类似的结果。（但是考虑到模型的稳定，还是不建议选一个很大的学习率）
+
+
+
+交叉验证：
+    mllib中方法runwithvalidation提供了使用此选项。它以一对RDD的作为参数，第一个是训练数据集和第二验证数据集。
+
+
+
+Input Columns：
+    labelCol	Double	"label"	（Label to predict）-only supports binary labels.
+    featuresCol	Vector	"features"	（Feature vector）
+
+Output Columns (Predictions)：
+    predictionCol	Double	"prediction"	（Predicted label）
+
+In the future, GBTClassifier will also output columns for rawPrediction and probability, just as RandomForestClassifier does.
+
+
+Parameter setters（类比随机森林）：
+
+    比决策树多三个设置方法：
+    def
+    （1）setLossType(value: String): 最小化逻辑损失函数. (case-insensitive) 分类只Supported: "logistic" (default = logistic)
+    （2）setMaxIter(value: Int): iterations (>= 0)
+    （3）setStepSize(value: Double): 步长参数（即学习率）在区间（0，1 ]缩小参数估计量的贡献。（default = 0.1）
+    （4）setSubsamplingRate(value: Double): 用于学习每个决策树的训练数据的分数，范围（0，1）。 (default = 1.0)
+
+    没有：
+            setProbabilityCol(value: String): 预测类的条件概率列
+            setRawPredictionCol(value: String): 所得结果表示为预测为每一类的得分，有多少类就有多少个得分，取得分最小的 则判别为该类。
+            setThresholds(value: Array[Double]): 多类分类调整预测每一类的概率阈值，参数p/t 的最大值计为预测类，p:原始类的概率，t：阈值。长度与类别数一致
+
+
+
+
+    def
+        setCheckpointInterval(value: Int): 设置检查点间隔参数（> = 1）或禁用（-1）。10意味着，每10次迭代缓存一次检查点。
+
+        setFeaturesCol(value: String):
+
+        setImpurity(value: String): 用于信息增益计算的标准（不区分大小写）, Supported: "entropy" and "gini". (default = gini)
+
+        setLabelCol(value: String):
+
+        setLossType(value: String): 最小化逻辑损失函数. (case-insensitive) 分类只Supported: "logistic" (default = logistic)
+
+        setMaxBins(value: Int): Must be >= 2 and >= number of categories in any categorical feature. (default = 32)。分裂特征的最大划分数量，每个桶尽可能包含越多相同的类别，表示越合理。每个特征分裂时,最大划分(桶)数量（用于连续属性离散化算法和选择如何分割在每个节点上的特征）。一个桶可包含多个类别特征，但是这些特征尽可能集中在一个桶内
+
+        setMaxDepth(value: Int):  (>= 0)(default = 5) 深度为0,意味着有1个子节点;深度为1,意味着内部节点+2个叶子节点。 对决策树的层数作出限制，它是分类器为了对样本进行分类所作的一连串判断的最大次数，有利于避免过拟合。
+
+        setMaxIter(value: Int): iterations (>= 0)
+
+        setMinInfoGain(value: Double): 在树节点拆分上要考虑的最小信息增益（Minimum information gain）.Should be >= 0.0. (default = 0.0)，可0.05..
+
+        setMinInstancesPerNode(value: Int): 分裂后每个孩子必须拥有的最小实例数。如果分裂导致左或右孩子少于mininstancespernode，分裂将被作为无效。Should be >= 1. (default = 1)
+
+        setPredictionCol(value: String):
+
+        setSeed(value: Long):
+
+        setStepSize(value: Double): 步长参数（即学习率）在区间（0，1 ]缩小参数估计量的贡献。（默认值= 0.1）
+
+        setSubsamplingRate(value: Double): 用于学习每个决策树的训练数据的分数，范围（0，1）。 (default = 1.0)
+
+
+                mllib中：
+                  val categoricalFeatures = Map(0 -> 2, 1 -> 2)//第0列有2个特征，第一列有2个类别特征  -- 可作为setMaxBins的参考
+
+
+专家级设置：
+    def
+        setCacheNodeIds(value: Boolean): 如果TRUE，该算法将缓存节点IDS为每个实例。缓存可以加快更深层次树的训练。用户可以设置缓存检查点间隔时长或禁用它checkpointinterval。（默认= FALSE）
+        setMaxMemoryInMB(value: Int): MB分配给直方图聚合的最大内存。如果太小，那么1个节点每次迭代都会被分割，并且它的聚合可能超过这个大小。（默认值= 256 MB）

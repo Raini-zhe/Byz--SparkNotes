@@ -1,0 +1,19 @@
+
+val multiclassClassificator = new MulticlassClassificationEvaluator()
+    .setLabelCol("label")
+    .setPredictionCol("prediction")
+    .setMetricName("accuracy")  // supports ("f1" (default), "weightedPrecision", "weightedRecall", "accuracy")
+    .toDebugString // 显示参数
+
+val evaluate = multiclassClassificator.evaluate(dataset: Dataset[_], paramMap: ParamMap): Double
+
+
+评价指标名称参数Parameters：
+
+  （1）标签列 final val labelCol: Param[String] -- Param for label column name.
+  （2）预测列 final val predictionCol: Param[String] -- Param for prediction column name.
+  （3）结果列 val metricName: Param[String]
+      -- param for metric name in evaluation (supports "f1" (default), "weightedPrecision", "weightedRecall", "accuracy")
+
+主要方法：
+    evaluate(dataset: Dataset[_], paramMap: ParamMap): Double

@@ -1,0 +1,213 @@
+(2017.04.13) -- KMeans
+
+Word2vec与LDA的聚类区别
+
+1、首先，Word2vec是词聚类，LDA是主题词聚类
+2、也许在方法模型上，他们两者是不同的，但是产生的结果从语义上来说，都是相当于近义词的聚类，只不过LDA是基于隐含主题的，WORD2VEC是基于词的上下文的，或者说LDA关注doc和word的共现，而word2vec真正关注的是word和context的共现
+3、更严谨的说，词向量所体现的是语义（semantic）和语法（syntactic）这些 low-level的信息。而LDA的主题词表现的是更 high-level的文章主题（topic）这一层的信息。比如：
+1）计算词的相似度。同样在电子产品这个主题下，“苹果”是更接近于“三星”还是“小米”？
+2）词的类比关系：vector（小米）- vector（苹果）+ vector（乔布斯）近似于 vector（雷军）。
+3）计算文章的相似度。这个LDA也能做但是效果不好。而用词向量，即使在文章topic接近的情况下，计算出的相似度也能体现相同、相似、相关的区别。
+
+反过来说，想用词向量的聚类去得到topic这一级别的信息也是很难的。很有可能，“苹果”和“小米”被聚到了一类，而“乔布斯”和“雷军”则聚到另一类。
+这种差别，本质上说是因为Word2vec利用的是词与上下文的共现，而LDA利用的是词与文章之间的共现。
+
+word2vec+kmeans是先用word2vec把词表示为向量，然后用kmeans聚类，聚类的结果 应该是挺好的，
+但是和lda比，多了一些无用词的聚类，比如，我拿技术博客做预料，用lda聚类，聚出来的都是技术相关的，因为lda是有个主题提取的过程；
+
+
+###------
+
+
+K-means算法是最简单的一种聚类算法。算法的目的是使各个样本与所在类均值的误差平方和达到最小（这也是评价K-means算法最后聚类效果的评价标准）
+
+K-means聚类算法的一般步骤：
+    1.初始化。输入基因表达矩阵作为对象集X，输入指定聚类类数N，并在X中随机选取N个对象作为初始聚类中心。设定迭代中止条件，比如最大循环次数或者聚类中心收敛误差容限。
+    2.进行迭代。根据相似度准则将数据对象分配到最接近的聚类中心，从而形成一类。初始化隶属度矩阵。
+    3.更新聚类中心。然后以每一类的平均向量作为新的聚类中心，重新分配数据对象。
+    4.反复执行第二步和第三步直至满足中止条件。
+
+
+：K-均值聚类试图将一系列样本分隔成K个不同类簇。目的是最小化所有类簇中的方差之和，形式化的目标函数成为类簇内的方差之和（WCSS：计算每个类簇中样本与类中心的平方差，最后求和）。
+（1）将样本分到WCSS最小的类簇中，（方差之和=欧式距离的平方），=分配到欧式距离最近的类中心。
+（2）根据第一步分配情况重新计算每个类簇的类中心，直到收敛或者达到最大的迭代次数，（收敛：第一步分配之后WCSS值没改变）
+
+
+评价指标：均方根误差
+
+
+(合并特征列)
+  val assembler = new VectorAssembler()
+  assembler.setInputCols(Array("X","Y"))
+  assembler.setOutputCol("features")
+  val data1 = assembler.transform(data)
+
+
+（训练聚类模型）
+1.mllib
+  1.
+  val clusterModel = KMeans.train(parsedData, numClusters, numIterations)
+  2.
+  val model = new KMeans().
+    setK(K).
+    setMaxIterations(MaxIterations). // 默认20,分类和回归算法中默认迭代100次
+    setEpsilon(1.0e-6). //对迭代算法的收敛容差参数（> = 0）
+    setInitializationMode("random").
+    run(data)
+
+
+ * Constructs a KMeans instance with default parameters: {k: 2, maxIterations: 20, runs: 1, initializationMode: "k-means||", initializationSteps: 5, epsilon: 1e-4, seed: random}.
+ 构造函数：
+   默认情况下：分2类，20次迭代，1个并行（以过时），输出化模型选择KMeans.K_MEANS_PARALLEL，初始steps为5, epsilon = 0.0001，
+
+参数：
+   setEpsilon(epsilon: Double): KMeans.this.type
+      ：设置 Euclidean distance，判断距离点，如果所有点都小于它，我们将停止迭代 得出类簇。默认1.0e-4
+
+   setInitialModel(model: KMeansModel): KMeans.this.type
+      ：设置一个已经有的初始化模型，可以是结果较好的模型
+
+   setInitializationMode(initializationMode: String): KMeans.this.type
+      ：Set the initialization algorithm.
+      ：默认 "random"，随机选择一个点作为初始中心
+      ：or使用 "k-means||" 类下的 k-means++ . Default: k-means||.
+
+   setInitializationSteps(initializationSteps: Int): KMeans.this.type
+      ：Set the number of steps for the k-means|| initialization mode. This is an advanced setting -- the default of 2 is almost always enough. Default: 2.
+
+
+
+1.1 mllib KMeansModel 的方法
+
+  （1）val WCSS =
+    clusterModel.computeCost(parsedData)
+      :Return the K-means cost (sum of squared distances of points to their nearest center) for this model on the given data.
+      ：返回 一个 均方根误差值
+
+  （2）val pred =
+    clusterModel.predict(parsedData)
+      ：返回 预测数据每一列数据的类别
+
+  （3）val clusterCentre =
+    clusterModel.clusterCenters // 官方教程是这样的~ clusterModel.clusterCenters(pred)-- 报错，spark2.1.0不用加参数，Spark1.6.3倒是加的
+      :如K=2时，返回～clusterCentre: Array[org.apache.spark.mllib.linalg.Vector] = Array([0.1,0.1,0.1], [9.099999999999998,9.099999999999998,9.099999999999998])
+      ：返回 K个类簇初始质心（kmeans++初始质心选择最远点，如上）（原始数据有多数列，这里对于也有多少列）
+
+  （4）使用余玄相似度计算 质心->特征向量 的距离
+    import breeze.linalg._
+    import breeze.numerics.pow //相比scala.math 其可以对向量-按维进行处理
+    def computeDistance(v1: DenseVector[Double], v2: DenseVector[Double]) = pow(v1 - v2, 2).sum
+    val dist =
+      computeDistance(DenseVector(clusterCentre.toArray), DenseVector(vector.toArray))//中心->特征向量
+
+  （5）save(sc: SparkContext, path: String): Unit
+
+
+（Within-Cluster Sum of Squares, WCSS）：
+    给出损失函数（Cost Function），每一次选取好新的中心点，我们就要计算一下当前选好的中心点损失为多少，这个损失代表着偏移量，越大说明当前聚类的效果越差.
+    ：交叉验证
+      val trainTestSplitMovies = movieVectors.randomSplit(Array(0.6, 0.4), 123)
+      val trainMovies = trainTestSplitMovies(0)
+      val testMovies = trainTestSplitMovies(1)
+      //computeCost 用测试集评估训练集
+      val costsMovies = Seq(2, 3, 4, 5, 10, 20, 30,50).map{ k =>
+      (k, KMeans.train(trainMovies, k, numIterations, numRuns).computeCost(testMovies))
+      }
+      println("Movie-clustering-cross-validation")
+      costsMovies.foreach { case (k, cost) => println(f"WCSS-for-k=$k  -> $cost%2.2f")}
+
+
+
+
+
+2.ml
+    scala>     algKMeans.explainParams()
+    res0: String =
+      featuresCol: features column name (default: features)
+      initMode: The initialization algorithm. Supported options: 'random' and 'k-means||'. (default: k-means||)
+      initSteps: The number of steps for k-means|| initialization mode. Must be > 0. (default: 2)
+      k: The number of clusters to create. Must be > 1. (default: 2)
+      maxIter: maximum number of iterations (>= 0) (default: 20)
+      predictionCol: prediction column name (default: prediction)
+      seed: random seed (default: -1689246527)
+      tol: the convergence tolerance for iterative algorithms (>= 0) (default: 1.0E-4)
+
+
+
+
+
+2.1 ml KMeansModel 的方法
+
+
+  val dataset = spark.read.format("libsvm").load("file:///home/raini/spark/data/mllib/sample_kmeans_data.txt")
+
+  val kmeans = new org.apache.spark.ml.clustering.KMeans().setK(2).
+    setTol(1.0e-6).setInitSteps(2)
+
+  val model = kmeans.fit(dataset)
+
+  model.computeCost(dataset)    // 计算 WSSSE - Within Set Sum of Squared Errors
+
+  model.clusterCenters.foreach(println) // 得到 类簇中心 Array[Vactor]
+
+  model.summary.cluster.take(6)     // 得到 每一条数据的归类 集合
+  model.summary.clusterSizes    // 得到 每一类簇下 该类的个数
+  model.summary.featuresCol     // 得到 预测列的名字
+
+  model.setPredictionCol("预测列的名字")
+  model...
+
+  val pred = model.transform(dataset) // 预测数据 得到每一列数据的类别
+
+  def computeDistance(v1: DenseVector[Double], v2: DenseVector[Double]) = pow(v1 - v2, 2).sum
+  val clusterCentre = model.clusterCenters
+  val dist = computeDistance(DenseVector(clusterCentre.toArray), DenseVector(vector.toArray))//中心->特征向量
+
+  val clusterAssignments = moviesAssigned.groupBy {case (id, title, genres, cluster, dist) =>
+    cluster
+  }.collectAsMap() //键->类簇标识，值->电影和相关信息的组合
+
+  //接着，枚举每个类簇并输出距离类中心最近的前10个人
+   for ( (k,v) <- UclusterAssignments.toSeq.sortBy(_._1)) {
+     println(s"Cluster $k: ")
+     val m = v.toSeq.sortBy(_._5)  // 按距离排序
+     println(m.take(10).map { case (_, age, genrder, occupation,_, d) =>
+       (age, genrder, occupation, d)
+     }.mkString("\n")
+     )
+     println("====/n")
+   }
+
+
+
+
+
+
+
+
+
+K-Means算法有两个重大缺陷：
+
+    K-Means属于无监督学习，最大的特别和优势在于模型的建立不需要训练数据。在日常工作中，很多情况下没有办法事先获取到有效的训练数据，这时采用K-Means是一个不错的选择。K值是预先给定的，属于预先知识，很多情况下K值的估计是非常困难的，对于像计算全部微信用户的交往圈这样的场景就完全的没办法用K-Means进行。对于可以确定K值不会太大但不明确精确的K值的场景，可以进行迭代运算，然后找出Cost Function最小时所对应的K值，这个值往往能较好的描述有多少个簇类。
+    K-Means算法对初始选取的聚类中心点是敏感的，不同的随机种子点得到的聚类结果完全不同。可以用K-Means++算法来解决这个问题
+    K-Means++算法选择初始聚类中心的思想是：初始的聚类中心之间的相互距离要尽可能远。算法步骤如下：
+
+    随机挑选一个点作为第一个聚类中心；
+    对于每一个点x，计算和其最近的一个聚类中心的距离D(x)，将所有距离求和得到Sum(D(x))；
+    然后，再取一个随机值，用权重的方式来取计算下一个“种子点”。这个算法的思想是，先取一个能落在Sum(D(x))中的随机值Random，然后用Random -= D(x)，直到其<=0，此时的点就是下一个“种子点”（其思想是，D(x)较大的点，被选取作为聚类中心的概率较大）；
+    重复2和3，直到K个聚类中心被选出来；
+    利用这K个初始聚类中心进行K-Means算法。
+
+    Spark的MLlib库中也支持K-Means++初始化方法，只需增加初始模式设置：
+
+
+在实际应用中，K-Means 算法有两个不得不面对并且克服的问题。
+
+    聚类个数 K 的选择。K是用户指定的参数，即所期望的簇的个数。这样做的前提是已经知道数据集中包含多少个簇，但很多情况下，并不知道数据的分布情况，实际上聚类就是发现数据分布的一种手段，这就陷入了鸡和蛋的矛盾。
+    初始聚类中心点的选择。选择不同的聚类中心可能导致聚类结果的差异。
+    Spark MLlib K-Means 算法的实现在初始聚类点的选择上，借鉴了一个叫 K-means||的类 K-means++ 实现。K-means++ 算法在初始点选择上遵循一个基本原则: 初始聚类中心点相互之间的距离应该尽可能的远。基本步骤如下:
+
+    从数据集D中随机选择一个点作为第一个初始点
+    计算数据集中所有点与最新选择的中心点的距离
+    选择下一个中心点，使得最大
+    重复 2,3 步过程，直到 K 个初始点选择完成。

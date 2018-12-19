@@ -1,0 +1,31 @@
+
+(1)
+在HIVE中，除了COUNT(*)外，COUNT还可以有很多高级用法
+
+SELECT
+    type
+  , count(*)
+  , count(DISTINCT u)
+  , count(CASE WHEN plat=1 THEN u ELSE NULL END)
+  , count(DISTINCT CASE WHEN plat=1 THEN u ELSE NULL END)
+  , count(CASE WHEN (type=2 OR type=6) THEN u ELSE NULL END)
+  , count(DISTINCT CASE WHEN (type=2 OR type=6) THEN u ELSE NULL END)
+FROM
+    t
+WHERE
+    dt in ("2012-1-12-02", "2012-1-12-03")
+GROUP BY
+    type
+ORDER BY
+    type
+;
+
+
+
+(2)
+导入.sql文件中的sql
+ spark-sql --driver-class-path /home/hadoop/hive/lib/mysql-connector-java-5.1.30-bin.jar -f testsql.sql 
+
+
+
+

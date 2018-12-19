@@ -1,0 +1,66 @@
+
+应用：
+    比如 根据 房屋面积+房间数 计算 价格。（所得结果是数值变量）
+
+基础理论：
+    线性回归(Linear Regression)是利用称为线性回归方程的最小平方函数对一个或多个自变量和因变量之间关系进行建模的一种回归分析。这种函数是一个或多个称为回归系数的模型参数的线性组合。
+    （学习速率α），当α过大时，有可能越过最小值，而α当过小时，容易造成迭代次数较多，收敛速度较慢。
+    当样本集数据量很大时，批量梯度下降算法每迭代一次的复杂度为O(mn),复杂度很高。为了减少复杂度，使用随机梯度下降算法(stochastic gradient descent),
+
+
+lr Parameter setters：
+    val lr = new LinearRegression()
+    lr
+      .setElasticNetParam(0.8)   // lr.elasticNetParam.doc ->(the ElasticNet mixing parameter, in range [0, 1]. For alpha = 0, the penalty is an L2 penalty. For alpha = 1, it is an L1 penalty
+      .setFeaturesCol("feature") //
+      .setLabelCol("label")
+      .setFitIntercept(true)     // 设置算法是否应该加 截距,是否给数据加上一个干扰特征或者偏差特征; （权重优化，进行梯度下降学习，返回最优权重。
+      .setMaxIter(100)            // Default is 100.
+      .setPredictionCol("")      // Default is "prediction" -(prediction column name)
+      .setRegParam(0.3)          // Default is 0.0. (设置正则化参数[0,1]。0=L1,1=L2) - Set the regularization parameter
+      .setSolver(value: String): // 为优化求解算法参数。("l-bfgs"，"gd")- If this is not set or empty, default value is 'auto'.
+      .setStandardization(true)  // Default is true.(在模型拟合前是否规范训练特征) - 注:有/没有标准化，模型都会收敛到相同的解决方案。
+      .setTol(1e-6)              // Default is 1E-6.(设置迭代的收敛容差-步长)较小的值将导致更高的精度与更多的迭代成本。
+      .setWeightCol("")          // 默认不用设置. （权重列-权重较高的列）-- 如果不设置,将所有特征值权重看作1.0
+
+
+
+(这些逻辑回归特有的)val lr = new LogisticRegression()
+      lr
+      .setRawPredictionCol("")   // Default: "rawPrediction" (可以设置一个名字，如"score"，代表输出的DataFrame列名。所得结果表示为预测为每一类的得分，有多少类就有多少个得分，取得分最小的 则判别为该类。)
+      .setProbabilityCol("")     // Default: "probability" (预测类条件概率的列名,得到样本属于N个类的概率.)。注：并非所有模型输出都有校准概率估计！这些结果应被视为机密，不精确的概率。
+      .setThreshold(0.5)         // Default is 0.5. (设置在二分类问题中, in range [0, 1])。注：When setThreshold(), 任何用户设置的 thresholds()都将被清除; If both（threshold and thresholds）are set in a ParamMap, 他们必须等价.
+      .setThresholds(Array(0.6,0.4))// 在多（或二）分类中设置阈值以调整每个类的预测概率 。(如果预测得分小于0.6，则预测为1类)数组长度必须=类数目，值大于0 且最多一个值可置为0; 这个类预测的最大值( p/t ) p:该类的原始概率 t:该类的阈值 --（预测为该类的概率，所有加起来不用=1,设置可能需要不断的取调整）还是不太明白。
+      .setAggregationDepth(2)    // Default is 2.（树深度）- 如果特征或分区多，建议调大该参数 - (greater than or equal to 2)
+
+
+
+lrModel的一些方法：
+
+    系数矩阵Coefficients: lrModel.coefficients
+    截距向量Intercept: lrModel.intercept
+    模型评估：evaluate(dataset: Dataset[_]): LinearRegressionSummary -- Evaluates the model on a test dataset.
+
+
+线性回归训练结果：
+    目前，除了目标跟踪（梯度优化时），训练忽略权重
+    val trainingSummary: LinearRegressionTrainingSummary = lrModel.summary (训练集评估)
+
+    trainingSummary.totalIterations // 计算总共迭代多少次模型达到收敛
+    trainingSummary.objectiveHistory.mkString(",") // 迭代次数的历史拟合评分（越来越低）
+    trainingSummary.residuals.show()
+    trainingSummary.rootMeanSquaredError  // 均方根误差
+    trainingSummary.meanAbsoluteError
+    trainingSummary.r2
+
+
+lrModel.summary: LinearRegressionTrainingSummary 评估方法
+    coefficientStandardErrors: Array[Double] -- 标准差估计系数（该方法需标准化数据） 和 截距（如果使用了截距）：Standard error of estimated coefficients and intercept.
+    devianceResiduals: Array[Double] -- 加权残差平方根
+    ...
+
+
+
+
+注：
+Spark mllib中： L-BFGS支持二分逻辑回归和多项式逻辑回归，SGD只支持二分逻辑回归。L-BFGS不支持L1正则化，SGD版本支持L1正则化。当L1不是必须时，推荐使用L-BFGS版本，它通过拟牛顿近似Heaaian矩阵收敛的更快更准。

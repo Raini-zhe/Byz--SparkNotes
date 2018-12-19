@@ -1,0 +1,86 @@
+ <---------------------------------------------------------------------------------------------------------------------------------
+
+
+官方安装指南: 
+	http://xgboost.readthedocs.io/en/latest/build.html#building-on-ubuntu-debian
+
+
+安装-ubuntu(依次执行):
+	sudo apt-get update
+	sudo apt-get install -y maven
+	sudo apt-get -y install cmake
+	sudo git clone --recursive https://github.com/dmlc/xgboost
+
+	cd xgboost
+	--在centos7版本的服务器上编译:(cd xgboost; cp make/minimum.mk ./config.mk; make -j4)
+	cp make/config.mk ./config.mk (编辑来改变编译选项-可设置1支持HDFS/S3)
+	sudo make -j4 (如果失败,更新子模块并清干净重新安装: git submodule update && make clean_all && make -j4)
+
+	export JAVA_HOME=/home/raini/app/jdk
+
+	cd jvm-packages
+
+	法1. mvn install -Dspark.version=2.2.1 (成功)
+	法2. mvn package ($ sudo mvn -Dspark.version=2.2.1)
+
+
+编译成功会输出:
+	[INFO] ------------------------------------------------------------------------
+	[INFO] Reactor Summary:
+	[INFO] 
+	[INFO] xgboost-jvm ........................................ SUCCESS [ 19.276 s]
+	[INFO] xgboost4j .......................................... SUCCESS [ 37.284 s]
+	[INFO] xgboost4j-spark .................................... SUCCESS [10:18 min]
+	[INFO] xgboost4j-flink .................................... SUCCESS [03:51 min]
+	[INFO] xgboost4j-example .................................. SUCCESS [01:50 min]
+	[INFO] ------------------------------------------------------------------------
+	[INFO] BUILD SUCCESS
+	[INFO] ------------------------------------------------------------------------
+	[INFO] Total time: 16:57 min
+	[INFO] Finished at: 2018-01-09T17:11:41+08:00
+	[INFO] Final Memory: 445M/1283M
+	[INFO] ------------------------------------------------------------------------
+
+
+
+最后:
+	1.raini@biyuzhe:~/xgboost/lib$ sudo cp ./libxgboost4j.so /lib/
+	2.将xgboost4j-spark.jar导入/spark/jars/ 即可进行开发了
+
+
+
+解决XGBoost-spark编译问题:
+	[INFO] Finished at: 2018-01-02T15:15:03+08:00
+	[INFO] Final Memory: 5M/111M
+	[INFO] ------------------------------------------------------------------------
+	[ERROR] No goals have been specified for this build. You must specify a valid lifecycle phase or a goal in the format <plugin-prefix>:<goal> or <plugin-group-id>:<plugin-artifact-id>[:<plugin-version>]:<goal>. Available lifecycle phases are: validate, initialize, generate-sources, process-sources, generate-resources, process-resources, compile, process-classes, generate-test-sources, process-test-sources, generate-test-resources, process-test-resources, test-compile, process-test-classes, test, prepare-package, package, pre-integration-test, integration-test, post-integration-test, verify, install, deploy, pre-clean, clean, post-clean, pre-site, site, post-site, site-deploy. -> [Help 1]
+	[ERROR] 
+	[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+	[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+	[ERROR] 
+	[ERROR] For more information about the errors and possible solutions, please read the following articles:
+	[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/NoGoalSpecifiedException
+
+
+解决:
+ 	/xgboost/jvm-packages/(每个都要加)/pom.xml文件<build>标签里面加上<defaultGoal>compile</defaultGoal>即可
+				</executions>
+			    </plugin>
+			</plugins>
+			<defaultGoal>compile</defaultGoal>  <-----
+		    </build>
+		    <dependencies>
+			<dependency>
+
+
+
+
+
+在spark-shell中使用XGB:
+    scala>    import ml.dmlc.xgboost4j.scala.DMatrix
+    scala>    val dmat = new DMatrix("file:///home/raini/spark/data/mllib/sample_libsvm_data.txt")
+    scala>     dmat.getLabel
+    res1: Array[Float] = Array(0.0, 1.0, 1.0, 1.0, 1.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0)
+
+
+

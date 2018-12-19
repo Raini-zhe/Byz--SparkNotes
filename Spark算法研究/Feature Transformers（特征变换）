@@ -1,0 +1,126 @@
+Feature Transformers（特征变换）
+1.Tokenizer（分词器）--- 默认空格分隔
+2.RegexTokenizer --- 参数"pattern"(默认的正则分隔符: "\s+") 用于拆分输入的文本。.setPattern("\W")
+
+3.StopWordsRemover（停用字清除）--- 通过调用StopWordsRemover.loadDefaultStopWords(language)设置（不支持中文）
+
+4.n-gram
+NGram 输入为一系列的字符串（例如：Tokenizer分词器的输出）。
+.setN(2)，参数n表示将n个单词合并成一个单词（并用空格割开这串单词）。如果输入的字符串少于n个单词，NGram输出为空。
+应用：
+  1.过滤掉元素少于N个的行。
+  2.查看每一行数据是否都是一样的元素个数，一样的话则都输出空
+
+5.Binarizer(二元化方法)
+.setThreshold(0.5)，（输入的）特征值大于阀值将映射为1.0，特征值小于等于阀值将映射为0.0。
+（Binarizer）支持向量（Vector）和双精度（Double）类型的输出。
+
+6.PCA（主成分分析）
+主成分分析是一种统计学方法，它使用正交转换从一系列可能线性相关的变量中提取线性无关变量集，提取出的变量集中的元素称为主成分（principal components）。
+如-将5维特征向量转换为3维主成分向量，PCA().setK(3)。
+应用： 人脸识别
+
+7.PolynomialExpansion（多项式扩展）
+将n维的原始特征组合扩展到多项式空间的过程。new PolynomialExpansion().setDegree(3) 将原始向量扩展到3维空间。
+如：Vectors.dense(0.0, 0.0),扩展后： 0.0,0.0,0.0, 0.0,0.0,0.0, 0.0,0.0,0.0 -- 3维
+
+|[2.0,1.0] |[2.0,4.0,8.0, 1.0,2.0,4.0, 1.0,2.0,1.0]     | -- 多项式乘多项式法则：先用一个多项式的每一项乘以另一个多项式的每一项，再把所得的积相加。
+|[3.0,-1.0]|[3.0,9.0,27.0, -1.0,-3.0,-9.0, 1.0,3.0,-1.0]| -- 以某种规则展开
+
+
+8.Discrete Cosine Transform (DCT-离散余弦变换)
+将（时域）的N维实数序列转换成（频域）的N维实数序列的过程（有点类似离散傅里叶变换）--维度不变。
+将离散余弦变换后结果乘以（1/根号2）得到一个与时域矩阵长度一致的矩阵，new DCT().setInverse(false)， 输入序列与输出之间是一一对应的。
+应用：
+  离散余弦变换，尤其是它的第二种类型，经常被信号处理和图像处理使用，用于对信号和图像(包括静止图像JPEG 和运动图像MJPEG和MPEG)进行有损数据压缩。
+  这是由于离散余弦变换具有很强的"能量集中"特性:大多数的自然信号(包括声音和图像)的能量都集中在离散余弦变换后的低频部分，而且当信号具有接近马尔科夫过程(Markov processes)的统计特性时，离散余弦变换的去相关性接近于K-L变换(Karhunen-Loève 变换--它具有最优的去相关性)的性能。
+
+
+9.StringIndexer（字符串-索引变换）
+类型特征映射为数字特征 -- 将字符串的（以单词为）标签编码成标签索引（表示）。标签索引序列的取值范围是[0，numLabels（字符串中所有出现的单词去掉重复的词后的总和）]，按照标签出现频率排序，出现最多的标签索引为0。如果输入是数值型，我们先将数值映射到字符串，再对字符串进行索引化。
+另外，StringIndexer 在转换新数据时提供两种容错机制处理训练中没有出现的标签
+  1.抛出异常错误（默认值）
+  2.跳过未出现的标签实例。
+  new StringIndexer().setHandleInvalid("skip") 对没出现过的标签跳过，“error“为抛出异常。
+
+
+10.IndexToString（索引-字符串变换）
+与StringIndexer对应，IndexToString将索引化标签还原成原始字符串。一个常用的场景是先通过StringIndexer产生索引化标签，然后使用索引化标签进行训练，最后再对预测结果使用IndexToString来获取其原始的标签字符串。
+
+  val indexer = new StringIndexer().setInputCol("category").setOutputCol("categoryIndex").fit(df)
+  val indexed = indexer.transform(df)
+  ...
+  //设置indexer的labels（用indexer，因为输入要求是标签数组）
+  val converter = new IndexToString().setInputCol("categoryIndex").setOutputCol("originalCategory").
+    setLabels(indexer.labels)
+
+
+11.OneHotEncoder（独热编码）
+import org.apache.spark.ml.feature.{OneHotEncoder, StringIndexer}
+val encoder = new OneHotEncoder().setInputCol("genderIndex").setOutputCol("genderVec").setDropLast(false)
+将类别特征映射为二进制向量，有效值（为1，其余为0）-- 先StringIndexer，再OneHotEncoder。
+
+（试验出现问题，3个特征只转了两个，还有一个为01之外的数字）
+：因为没设置.setDropLast(false)
+
+  注：（独热编码）只支持数值类型的输入，所以需要转换
+  val indexer = new StringIndexer().setInputCol("category").setOutputCol("categoryIndex").fit(df)
+  val indexed = indexer.transform(df)
+  val encoder = new OneHotEncoder().setInputCol("categoryIndex").setOutputCol("categoryVec")
+  val encoded = encoder.transform(indexed)
+  encoded.show()
+
+
+12.VectorIndexer(向量类型索引化)
+VectorIndexer可以帮助指定向量数据集中的分类特征。它可以自动确定哪些功能是分类的，并将原始值转换为类别索引。具体来说，它执行以下操作：
+  1.取一个Vector类型的输入（列）和一个参数maxCategories。
+  2.根据不同值的数量确定哪些列应为类别特征，其中列元素小于maxCategories的 被声明为分类。（即某一列）中多于N个取值视为连续值，重新索引（从0开始）
+应用：
+  索引分类功能允许诸如决策树和树组合之类的算法适当地处理分类特征，提高性能。
+  在下面的示例中，我们读取标注点的数据集，然后使用VectorIndexer来确定哪些功能应被视为分类。我们将分类特征值转换为其索引。然后，该转换的数据可以传递给诸如DecisionTreeRegressor之类的算法来处理分类特征。
+
+  import org.apache.spark.ml.feature.VectorIndexer
+
+  val data = spark.read.format("libsvm").load("file:///home/raini/spark/data/mllib/sample_libsvm_data.txt")
+  val indexer = new VectorIndexer().setInputCol("features").setOutputCol("indexed").setMaxCategories(10)
+  val indexerModel = indexer.fit(data)
+  val categoricalFeatures: Set[Int] = indexerModel.categoryMaps.keys.toSet
+  println(s"Chose ${categoricalFeatures.size} categorical features: " + categoricalFeatures.mkString(", "))
+  // Create new column "indexed" with categorical values transformed to indices
+  val indexedData = indexerModel.transform(data)
+  indexedData.show()
+
+
+13.Interaction（相互作用）
+（两个向量的迪卡尔集，得到一个n*m的向量）
+            import org.apache.spark.ml.feature.Interaction
+            import org.apache.spark.ml.feature.VectorAssembler
+
+            val df = spark.createDataFrame(Seq(
+             (1, 1, 2, 3, 8, 4, 5),
+             (2, 4, 3, 8, 7, 9, 8),
+             (3, 6, 1, 9, 2, 3, 6),
+             (4, 10, 8, 6, 9, 4, 5),
+             (5, 9, 2, 7, 10, 7, 3),
+             (6, 1, 1, 4, 2, 8, 4)
+            )).toDF("id1", "id2", "id3", "id4", "id5", "id6", "id7")
+
+            val assembler1 = new VectorAssembler().
+             setInputCols(Array("id2", "id3", "id4")).
+             setOutputCol("vec1")
+
+            val assembled1 = assembler1.transform(df)
+
+            val assembler2 = new VectorAssembler().
+             setInputCols(Array("id5", "id6", "id7")).
+             setOutputCol("vec2")
+
+            val assembled2 = assembler2.transform(assembled1).select("id1", "vec1", "vec2")
+
+      val interaction = new Interaction().
+       setInputCols(Array("id1", "vec1", "vec2")).
+       setOutputCol("interactedCol")
+
+            val interacted = interaction.transform(assembled2)
+
+            interacted.show(truncate = false)

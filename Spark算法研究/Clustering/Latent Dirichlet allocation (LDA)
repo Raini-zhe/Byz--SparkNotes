@@ -1,0 +1,188 @@
+潜在狄利克雷分布（LDA），为文本文档设计的主题模型。
+--主要的两个参数值："alpha"，"beta"。
+  ：LDA中，alpha变小，是尽可能让同一个文档只有一个主题，beta变小，是让一个词尽可能属于同一个主题。
+  ：gamma表示顾客开一张新桌的意愿，gamma越大，表示开新桌子的意愿越强。
+
+术语:
+    “词”=“词”：词汇的一个要素
+    “令牌”：文档中出现的术语的实例
+    “主题”：表示某些概念的多项分布
+    “文档”：一个文本，对应于输入数据中的一行
+
+Terminology:
+    "term" = "word": an element of the vocabulary
+    "token": instance of a term appearing in a document
+    "topic": multinomial distribution over terms representing some concept
+    "document": one piece of text, corresponding to one row in the input data
+
+
+输入数据（featuresCol）：
+    LDA给定文档集合作为输入数据。每个文档被指定为一个长度vocabsize向量，其中每一项是对应的词的数（字）的文件。特征如：
+    org.apache.spark.ml.feature.tokenizer 和 org.apache.spark.ml.feature.countVectorizer 的文本转换是有效的。
+
+
+
+
+Word2vec与LDA的聚类区别
+
+    1、首先，Word2vec是词聚类，LDA是主题词聚类
+    2、也许在方法模型上，他们两者是不同的，但是产生的结果从语义上来说，都是相当于近义词的聚类，只不过LDA是基于隐含主题的，WORD2VEC是基于词的上下文的，或者说LDA关注doc和word的共现，而word2vec真正关注的是word和context的共现
+    3、更严谨的说，词向量所体现的是语义（semantic）和语法（syntactic）这些 low-level的信息。而LDA的主题词表现的是更 high-level的文章主题（topic）这一层的信息。比如：
+    1）计算词的相似度。同样在电子产品这个主题下，“苹果”是更接近于“三星”还是“小米”？
+    2）词的类比关系：vector（小米）- vector（苹果）+ vector（乔布斯）近似于 vector（雷军）。
+    3）计算文章的相似度。这个LDA也能做但是效果不好。而用词向量，即使在文章topic接近的情况下，计算出的相似度也能体现相同、相似、相关的区别。
+
+    反过来说，想用词向量的聚类去得到topic这一级别的信息也是很难的。很有可能，“苹果”和“小米”被聚到了一类，而“乔布斯”和“雷军”则聚到另一类。
+    这种差别，本质上说是因为Word2vec利用的是词与上下文的共现，而LDA利用的是词与文章之间的共现。
+
+    word2vec+kmeans是先用word2vec把词表示为向量，然后用kmeans聚类，聚类的结果 应该是挺好的，
+    但是和lda比，多了一些无用词的聚类，比如，我拿技术博客做预料，用lda聚类，聚出来的都是技术相关的，因为lda是有个主题提取的过程；
+
+
+    ###------
+
+
+
+
+Parameter setters
+  def
+    setCheckpointInterval(value: Int): Param for set checkpoint interval (>= 1) or disable checkpoint (-1).迭代计算时检查点的间隔
+        ：E.g. 10 means that the cache will get checkpointed every 10 iterations.
+
+    setDocConcentration(value: Double): 文章分布的超参数(Dirichlet分布的参数)，必需>1.0. (通常命名为："alpha") 以前也叫 ("theta").
+    setDocConcentration(value: Array[Double]):
+
+        LDA中，alpha变小，是尽可能让同一个文档只有一个主题，beta变小，是让一个词尽可能属于同一个主题。
+        在LDA中对不同的alpha值进行尝试，选择alpha=[0.2，0.5,1,1.5,2，5,10],对于每个alpha,得到一个theta向量，也即每个每个文档上的主题分布概率，对于每个主题，计算所有文档在它上面的累积概率，可以看出，alpha越小，其分布曲线越陡峭，也就是说一个文档中，少数主题具有较高概率，而大部分概率较低，相反，alpha越大，说明文档中不同主题的概率较为均衡。
+
+        EM：Values > 1.0
+            alpha default = uniformly (50 / k) + 1, 其中k是你选择的topic数，
+
+        Online：Values >= 1.0
+            alpha default = uniformly (1.0 / k)
+
+
+    setFeaturesCol(value: String):
+    setK(value: Int): Must be > 1. Default: 10.
+    setMaxIter(value: Int):
+    setOptimizer(value: String): 优化计算方法，目前支持"em", "online"
+        ："online": Online Variational Bayes (default)
+        ："em": Expectation-Maximization， "On Smoothing and Inference for Topic Models." - 平滑推理主题模型
+
+    setSeed(value: Long):
+    setSubsamplingRate(value: Double): 采样率 For Online optimizer only: optimizer = "online". Default: 0.05, 即总文档的5%.
+        ：分数的语料进行采样，并在每次迭代中使用的小批量梯度下降，范围（0，1）。
+        注：同步设置 MaxIter，maxIterations * miniBatchFraction 应>= 0. 等同于参数 org.apache.spark.mllib.clustering.OnlineLDAOptimizer.miniBatchFraction
+
+    setTopicConcentration(value: Double): 如果不设置，(default = automatic)。这个叫beta，一般选为0.01吧，，这都是经验值，貌似效果比较好，收敛比较快一点。。
+        优化特定参数设置：
+          EM
+            Value should be greater than 1.0
+            default = 0.1 + 1, where 0.1 gives a small amount of smoothing and +1 follows Asuncion et al. (2009), who recommend a +1 adjustment for EM.
+          Online
+            Value should be greater than or equal to 0
+            default = (1.0 / k), following the implementation from here.
+
+    setTopicDistributionCol(value: String): 输出列与每个文档的主题混合分布的估计（在文献中通常称为“θ”-"theta" ）。空文档返回零向量。
+        ：这采用了变分近似如霍夫曼等。（2010）近似分布称为“伽马”。技术上，该方法返回每个文档的近似“伽马”。
+
+
+(expert-only) Parameter setters
+    def
+      setKeepLastCheckpoint(value: Boolean): EM优化仅在：optimizer = "em".Default: true
+      如果使用检查点，则指示是否保留最后一个检查点。如果FALSE，则检查点将被删除。如果数据分区丢失，则删除检查点可能会导致故障，因此请小心设置此位。
+    def
+      setLearningDecay(value: Double): 仅用于：optimizer = "online". 学习率，设置为指数衰减率。 Default: 0.51. 步长参数（即学习率）
+      这值应该介于(0.5, 1.0]保证渐近收敛。学习率（步长）：学习率也会影响预测准确率，设置太大精度会降低。
+    def
+      setLearningOffset(value: Double): 仅用于：optimizer = "online". 较大的值使早期迭代计数较少。Default: 1024, following Hoffman et al.
+    def
+      setOptimizeDocConcentration(value: Boolean): 仅用于：optimizer = "online". 是否优化训练。设置为true将使模型更具表现力，更好地适应训练数据。Default: false
+
+
+
+LDAModel: =====================================================================
+    def
+
+      isDistributed: Boolean
+
+      describeTopics(): DataFrame
+
+      describeTopics(maxTermsPerTopic: Int): DataFrame -- Default value of 10. Return the topics described by their top-weighted terms.
+        returns Local DataFrame with one topic per Row, with columns:
+            "topic": IntegerType: topic index
+            "termIndices": ArrayType(IntegerType): term indices, sorted in order of decreasing term importance
+            "termWeights": ArrayType(DoubleType): corresponding sorted term weights
+
+      estimatedDocConcentration: Vector -- 估算的"alpha"
+            如果使用的是 Online LDA 和 optimizeDocConcentration 设置为 false, 则返回固定（given）的值 for the docConcentration parameter.
+
+      logLikelihood(dataset: Dataset[_]): Double -- likelihood可以理解为"probability"。对数似然估计函数 值一般取负值，实际值（不是绝对值）越大越好。
+            警告：如果这个DistributedLDAModel（当优化器设置为“EM”），这包括collecting收集大量topicsMatrix给driver。这种实现可能在未来改变。
+            dataset：test corpus to use for calculating log likelihood（用于计算对数似然的测试语料库）
+            returns：variational lower bound on the log likelihood of the entire corpus（整个语料库的对数似然的变分下界）
+
+      困惑度：（调节主题数量方法之一）
+      logPerplexity(dataset: Dataset[_]): Double --它是一种常用的聚类质量评价标准; 随主题数量增多而单调减少，困惑度越低，模型越好;
+            计算的是测试集上所有单词出现概率的几何均值的倒数。直观上来讲，困惑度描述的是在测试集上产生一个token所需词表的期望大小，这个词表的单词符合均值分布。
+
+            Calculate an upper bound bound on perplexity. (Lower is better.) See Equation (16) in the Online LDA paper (Hoffman et al., 2010).
+
+            WARNING: 如果这个DistributedLDAModel（当优化器设置为“EM”），这包括collecting收集大量topicsMatrix给driver。这种实现可能在未来改变。
+            dataset：test corpus to use for calculating perplexity（用于计算困惑度的测试语料库）
+            returns：Variational upper bound on log perplexity per token.（每个标记的对数困惑的变分上界。）
+
+      topicsMatrix: Matrix
+            推断的主题，每一列(k个)是一个话题。没有保证有关的主题排序。
+            WARNING: 如果这个DistributedLDAModel（当优化器设置为“EM”），这包括collecting收集大量topicsMatrix给driver。
+
+      transform(dataset: Dataset[_]): DataFrame
+
+  val
+      supportedOptimizers: Array[String] -- Supported values for Param optimizer.(提供参数的优化值)
+      vocabSize: Int -- 词汇量（词汇表中词的数量）- 与输入数据一致
+
+
+
+logLikelihood：
+    likelihood可以理解为"probability"。对数似然估计函数 值一般取负值，实际值（不是绝对值）越大越好。<-实际值越大越好！！
+    第一，基本推理。对于似然函数，如果是离散分布，最后得到的数值直接就是概率，取值区间为0-1，对数化之后的值就是负数了；
+        如果是连续变量，因为概率密度函数的取值区间并不局限于0-1，所以最后得到的似然函数值不是概率而只是概率密度函数值，这样对数化之后的正负就不确定了。
+    第二，Eviews的计算公式解释。公式值的大小关键取之于残差平方和（以及样本容量），只有当残差平方和与样本容量的比值很小时，括号内的值才可能为负，从而公式值为正，这时说明参数拟合效度很高；反之公式值为负，但其绝对值越小表示残差平方和越小，因而参数拟合效度越高。
+
+
+
+例子====================================================================
+
+import org.apache.spark.ml.clustering.LDA
+
+// Loads data.
+val dataset = spark.read.format("libsvm").load("data/mllib/sample_lda_libsvm_data.txt")
+
+// Trains a LDA model.
+val lda = new LDA().setK(10).setMaxIter(10)
+val model = lda.fit(dataset)
+
+val ll = model.logLikelihood(dataset)
+val lp = model.logPerplexity(dataset)
+println(s"The lower bound on the log likelihood of the entire corpus: $ll") //越大越好，调k
+println(s"The upper bound bound on perplexity: $lp") //越小越好
+
+// Describe topics.
+val topics = model.describeTopics(3)
+println("The topics described by their top-weighted terms:")
+topics.show(false)
+
+// Shows the result.
+val transformed = model.transform(dataset)
+transformed.show(false)
+
+//3 模型输出，模型参数输出，结果输出
+// Output topics. Each is a distribution over words (matching word count vectors)
+println("Learned topics (as distributions over vocab of " + ldaModel.vocabSize + " words):")
+val topics = ldaModel.topicsMatrix
+for (topic <- Range(0, 3)) {
+  print("Topic " + topic + ":")
+  for (word <- Range(0, ldaModel.vocabSize)) { print(" " + topics(word, topic)); }
+  println()
+}

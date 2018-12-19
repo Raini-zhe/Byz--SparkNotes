@@ -1,0 +1,53 @@
+二分k均值（bisecting k-means）- 分裂式聚类（与凝聚聚类正好相反）- 也叫树形聚类
+
+
+：K-均值算法是一种基于样本间相似性度量的间接聚类方法
+：A bisecting k-means algorithm based on the paper "A comparison of document clustering techniques"
+
+算法优缺点：
+     由于这个是K-means的改进算法，所以优缺点与之相同。
+     二分K均值算法可以加速K-means算法的执行速度，因为它的相似度计算少了
+     不受初始化问题的影响，因为这里不存在随机点的选取，且每一步都保证了误差最小
+    所以说这个算法也并不能够保证完全不受K的影响一定归到全局最小，只是相对较优，并且还有了一定的速度提升。
+
+算法的主要思想：
+    分类式聚类是自上而下的方法，刚开始所有样本属于一个类簇，然后接下来每一步将每个类簇一分为二。之后选择能最大程度降低聚类代价函数（也就是误差平方和）的簇划分为两个簇。以此进行下去，最后直到所有的样本在底层独自为一个类簇（直到簇的数目等于用户给定的数目k为止）。
+    平分k-均值通常可以比普通的k-均值快得多，但它通常会产生不同的聚类。
+
+以上隐含着一个原则是：
+    因为聚类的误差平方和能够衡量聚类性能，该值越小表示数据点月接近于它们的质心，聚类效果就越好。所以我们就需要对误差平方和最大的簇进行再一次的划分，因为误差平方和越大，表示该簇聚类越不好，越有可能是多个簇被当成一个簇了，所以我们首先需要对这个簇进行划分。
+
+
+模型评估：
+    WCSS
+
+
+Parameter setters：
+    def setFeaturesCol(value: String): BisectingKMeans.this.type
+    def setK(value: Int): BisectingKMeans.this.type
+    def setMaxIter(value: Int): BisectingKMeans.this.type
+    def setPredictionCol(value: String): BisectingKMeans.this.type
+    def setSeed(value: Long): BisectingKMeans.this.type
+
+
+
+模型方法：
+    import org.apache.spark.ml.clustering.BisectingKMeans
+    val dataset = spark.read.format("libsvm").load("file:///home/raini/spark/data/mllib/sample_kmeans_data.txt")
+
+初始化
+    val bkm = new BisectingKMeans()
+      .setK(2)
+      .setMaxIter(20)
+      .setSeed(1)
+      .setMinDivisibleClusterSize(1)  // 专家级设置，官方不推荐去设置它，最小多少个点可成为一个簇
+
+建模
+    val model = bkm.fit(dataset)
+
+模型方法
+    model.extractParamMap()
+    model.clusterCenters // 聚类中心
+    model.computeCost(dataset) // 模型评估 WCSS 计算输入点与其对应的聚类中心之间的平方差之和。
+
+    model.minDivisibleClusterSize.doc //最小的点数目（大于或等于1）或最小比例的点（如果小于1）可分为一个簇（默认值：1）。

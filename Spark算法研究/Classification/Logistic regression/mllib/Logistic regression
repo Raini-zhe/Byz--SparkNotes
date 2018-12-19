@@ -1,0 +1,13 @@
+
+参考 SVM ，
+
+
+// coefficients and intercepts for logistic regression with multinomial family <- 只能计算出这些
+println(s"Multinomial coefficients: ${mlrModel.coefficientMatrix}")
+println(s"Multinomial intercepts: ${mlrModel.interceptVector}")
+
+mlrModel.hasSummary <- Boolean = false（说明不支持使用统计）
+mlrModel.summary    <- 报错，不支持
+
+特征数：mlrModel.numFeatures
+类别数：mlrModel.numClasses

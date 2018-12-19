@@ -1,0 +1,66 @@
+高斯混合模型--GMM(Gaussian Mixture Model) - 基于概率的模型
+
+
+斯混合模型（Gaussian Mixture Model, GMM） 是一种概率式的聚类方法，属于生成式模型，它假设所有的数据样本都是由某一个给定参数的 多元高斯分布 所生成的。具体地，给定类个数K，对于给定样本空间中的样本 xx ，一个高斯混合模型的概率密度函数可以由K个多元高斯分布组合成的混合分布表示
+    高斯混合模型由K个不同的多元高斯分布共同组成，每一个分布被称为高斯混合模型中的一个 成分(Component)， 而 wiwi 为第i个多元高斯分布在混合模型中的 权重。
+    利用GMM进行聚类的过程是利用GMM生成数据样本的“逆过程”：给定聚类簇数K，通过给定的数据集，以某一种 参数估计 的方法，推导出每一个混合成分的参数（即均值向量 μμ 、协方差矩阵 ΣΣ 和权重 ww ），每一个多元高斯分布成分即对应于聚类后的一个簇。
+    ->高斯混合模型在训练时使用了极大似然估计法，最大化对数似然函数（真实值(一般为负),越大越好），故可采用 期望-最大化(Expectation-Maximization, EM) 方法求解。
+具体过程如下:
+  1.根据给定的K值，初始化K个多元高斯分布以及其权重；
+  2.根据贝叶斯定理，估计每个样本由每个成分生成的后验概率；(EM方法中的E步)
+  3.根据均值，协方差的定义以及2步求出的后验概率，更新均值向量、协方差矩阵和权重；（EM方法的M步）
+  重复2~3步，直到似然函数增加值已小于收敛阈值，或达到最大迭代次数
+  当参数估计过程完成后，对于每一个样本点，根据贝叶斯定理计算出其属于每一个簇的后验概率，并将样本划分到后验概率最大的簇上去。相对于KMeans等直接给出样本点的簇划分的聚类方法，GMM这种给出样本点属于每个簇的概率的聚类方法，被称为 软聚类(Soft Clustering / Soft Assignment) 。
+
+
+原理：
+
+  参考：（原理篇 http://blog.pluskid.org/?p=39 ）（Spark篇 http://blog.csdn.net/qq_34531825/article/details/52663509）
+
+  实时上，GMM 和 k-means 很像，不过 GMM 是学习出一些概率密度函数来（所以 GMM 除了用在 clustering 上之外，还经常被用于 density estimation ），简单地说，k-means 的结果是每个数据点被 assign 到其中某一个 cluster 了，而 GMM 则给出这些数据点被 assign 到每个 cluster 的概率，又称作 soft assignment 。
+
+  得出一个概率有很多好处，因为它的信息量比简单的一个结果要多，比如，我可以把这个概率转换为一个 score ，表示算法对自己得出的这个结果的把握。也许我可以对同一个任务，用多个方法得到结果，最后选取“把握”最大的那个结果；另一个很常见的方法是在诸如疾病诊断之类的场所，机器对于那些很容易分辨的情况（患病或者不患病的概率很高）可以自动区分，而对于那种很难分辨的情况，比如，49% 的概率患病，51% 的概率正常，如果仅仅简单地使用 50% 的阈值将患者诊断为“正常”的话，风险是非常大的，因此，在机器对自己的结果把握很小的情况下，会“拒绝发表评论”，而把这个任务留给有经验的医生去解决。
+
+  混合模型：通过密度函数的线性合并来表示未知模型p(x)
+      为什么提出混合模型，那是因为单一模型与实际数据的分布严重不符，但是几个模型混合以后却能很好的描述和预测数据。
+      高斯混合模型（GMM），说的是把数据可以看作是从数个高斯分布中生成出来的。虽然我们可以用不同的分布来随意地构造 XX Mixture Model ，但是 GMM是最为流行。另外，Mixture Model 本身其实也是可以变得任意复杂的，通过增加 Model 的个数，我们可以任意地逼近任何连续的概率密分布。
+
+  回到 GMM 。按照我们前面的讨论，作为一个流行的算法，GMM 肯定有它自己的一个相当体面的归纳偏执了。其实它的假设非常简单，顾名思义，Gaussian Mixture Model ，就是假设数据服从 Mixture Gaussian Distribution ，换句话说，数据可以看作是从数个 Gaussian Distribution 中生成出来的。实际上，我们在 K-means 和 K-medoids 两篇文章中用到的那个例子就是由三个 Gaussian 分布从随机选取出来的。实际上，从中心极限定理可以看出，Gaussian 分布（也叫做正态 (Normal) 分布）这个假设其实是比较合理的，除此之外，Gaussian 分布在计算上也有一些很好的性质，所以，虽然我们可以用不同的分布来随意地构造 XX Mixture Model ，但是还是 GMM 最为流行。另外，Mixture Model 本身其实也是可以变得任意复杂的，通过增加 Model 的个数，我们可以任意地逼近任何连续的概率密分布。
+
+
+重点：
+
+   GMM 和 K-means 的迭代求解法其实非常相似（都可以追溯到 EM 算法），因此也有和 K-means 同样的问题──并不能保证总是能取到全局最优，如果运气比较差，取到不好的初始值，就有可能得到很差的结果。
+
+   对于 K-means 的情况，我们通常是重复一定次数然后取最好的结果，不过 GMM 每一次迭代的计算量比 K-means 要大许多，
+   一个更流行的做法是先用 K-means （已经重复并取最优值了）得到一个粗略的结果，然后将其作为初值（只要将 K-means 所得的 centroids 传入 gmm 函数即可），
+   再用 GMM 进行细致迭代。
+
+   GMM 所得的结果（Px）不仅仅是数据点的 label ，而包含了数据点标记为每个 label 的概率，很多时候这实际上是非常有用的信息。
+   GMM牛逼的地方就在于通过增加 Model 的个数（也就是组成成分的数量K，其实就是我们的分类个数），可以任意地逼近任何连续的概率密分布。
+
+   这类执行多元高斯混合模型（GMM）的期望最大化。GMM代表一个独立的高斯分布与相关的“混合”的权重指定每个贡献的复合分布。
+   给定一组采样点，这类将最大限度地为K的高斯混合对数似然，迭代直到小于convergencetol对数似然值的变化，或直到它达到迭代的最大数量。虽然这个过程通常保证收敛，它不能保证找到一个全局最优。
+
+
+GaussianMixture Parameter setters
+   def setFeaturesCol(value: String): GaussianMixture.this.type
+   def setK(value: Int): GaussianMixture.this.type
+   def setMaxIter(value: Int): GaussianMixture.this.type
+   def setPredictionCol(value: String): GaussianMixture.this.type
+   def setProbabilityCol(value: String): GaussianMixture.this.type
+   def setSeed(value: Long): GaussianMixture.this.type
+   def setTol(value: Double): GaussianMixture.this.type  (default: 1.0E-4)
+
+
+GaussianMixtureModel
+    Multivariate Gaussian Mixture Model (GMM) consisting of k Gaussians, where points are drawn from each Gaussian i with probability weights(i).
+    多元高斯混合模型（GMM）组成的K高斯点，从每个高斯概率 i 得出权重 weights(i)。
+
+
+
+
+GMM:
+    另外一种比较流行的聚类方法 Gaussian Mixture Model大致思想就是指对样本的概率密度分布进行估计，而估计的模型是几个高斯模型加权之和（具体是几个要在模型训练前建立好）。每个高斯模型就代表了一个类（一个Cluster）。对样本中的数据分别在几个高斯模型上投影，就会分别得到在各个类上的概率。然后我们可以选取概率最大的类所为判决结果。
+
+总结: 用GMM的优点是投影后样本点不是得到一个确定的分类标记，而是得到每个类的概率，这是一个重要信息。GMM每一步迭代的计算量比较大，大于k-means。GMM的求解办法基于EM算法，因此有可能陷入局部极值，这和初始值的选取十分相关了。GMM不仅可以用在聚类上，也可以用在概率密度估计上。

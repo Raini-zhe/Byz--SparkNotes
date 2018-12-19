@@ -1,0 +1,67 @@
+
+
+val path = "/ml-100k"
+
+//读取电影数据集
+val movies = sc.textFile("path/u.item")
+println(movies.first)
+
+//读取电影题材标签
+val genres = sc.textFile("path/u.genre")
+genres.take(5).forech(println)
+
+//<题材，索引>  并处理最后的空行
+val genreMap = genres.filter(!_.isEnpty).map( line =>line.split("\\|")).map(array => (array(1),array(0))).collectAsMap
+println(genreMap)
+
+//提取 （电影Id, 标题，题材）
+val titlesAndGenres = movies.map(_.split("\\|")).map{ array =>
+	val genres = array.toSer.slice(5, array.size)
+	val genresAssigned = genres.zipWithIndex.filter{ case (g,idx) =>
+		g == "1"
+	}.map { case (g, ida) =>
+		genreMap(idx.toString)
+	}
+	(array(0).toInt, (array(1), genresAssigned))
+}
+println(titlesAndGenres.first)
+
+//训练推荐模型
+import 
+import 
+val rawData = sc.textFile("path/u.data")
+val rawRatings = rawData.map (_.split("\t").take(3))
+val ratings = rawRatings.map{ case Array(user, movie, rating) =>
+	Rating(user.toInt, movie.toInt, rating.toDouble)
+}
+ratings.cache
+val alsModel = ALS.train(ratings, 50, 10, 0.1) //返回两pairRDD：Features/productFeatrures
+
+//提取相关因素转化到Vector中作为聚类模型训练输入
+impor linalg.Vectors
+val movieFactors = alsModel.productFeatrures.map{ case (id, factor) =>
+	(id, Vectors.dense(factor)))
+}
+val movieVectors = movieFactors.map(_.2)
+val userFactors = alsModel.userFactors.map { case (id, factor) =>
+	(id, Vectors.dense(factor))
+}
+val userVectors = userFactors.map(_.2)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

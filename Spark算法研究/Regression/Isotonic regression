@@ -1,0 +1,59 @@
+保序回归(Isotonic Regression) -- 看一眼原理图就明白了
+
+  保序回归能在训练数据上发现一个非递减逼近函数的同时最小化均方误差。这样的模型的好处是，它不用假设任何形式的目标函数，(如线性)。
+
+
+应用：
+  之一就是用来做统计推断，比如药量和毒性的关系，一般认为毒性随着药量是不减或者递增的关系，借此可以来估计最大药量。
+
+
+简单的例子：
+  问题描述：给定一个无序数字序列y，通过修改每个元素的值得到一个非递减序列 y‘ ，问如何使y和 y’ 误差（该处取平方差）最小？
+  保序回归法：从该序列y的首元素往后观察，一旦出现乱序现象停止该轮观察，从该乱序元素开始逐个吸收紧跟在后面的元素组成一个子序列sub_y，直到子序列sub_y所有元素的平均值小于或等于下一个待吸收的元素。
+  举例：
+    原始序列：<9, 10, 14>
+    结果序列：<9, 10, 14>
+  分析：从9往后观察，到最后的元素14都未发现乱序情况，不用处理。
+    原始序列：<9, 14, 10>
+    结果序列：<9, 12, 12>
+  分析：从9往后观察，观察到14时发生乱序（14>10），停止该轮观察转入吸收元素处理，吸收元素10后子序列为<14, 10>，取该序列所有元素的平均值得12，故用序列<12, 12>替代<14, 10>。吸收10后已经到了最后的元素，处理操作完成。
+    原始序列：<14, 9, 10,  15>
+    结果序列：<11, 11, 11, 15>
+  分析：从14往后观察，观察到9时发生乱序（14>9），停止该轮观察转入吸收元素处理，吸收元素9后子序列为<14, 9>。求该序列所有元素的平均值得12.5，由于12.5大于下个带吸收的元素10，所以再吸收10，得序列<14, 9, 10>。求该序列所有元素的平均值得11，由于11小于下个带吸收的元素15，所以停止吸收操作，用序列<11, 11, 11>替代<14, 9, 10>。
+
+
+
+
+Parameter setters
+  def
+    setFeatureIndex(value: Int): if featuresCol is a vector column (default: 0), no effect otherwise- 否则无效.
+    setFeaturesCol(value: String):
+    setIsotonic(value: Boolean): isotonic(等分)的输出顺序是 isotonic/increasing (true上升) 还是 antitonic/decreasing (false下降). Default: true
+    setLabelCol(value: String):
+    setPredictionCol(value: String):
+    setWeightCol(value: String):  If this is not set or empty, we treat all instance weights as 1.0.
+
+
+Model Members
+  def
+    boundaries: Vector -- 已知预测的递增顺序的边界(Boundaries in increasing order for which predictions are known.)
+    predictions: Vector -- 与同一指标的边界相关的预测，单调的，因为等渗回归。(Predictions associated with the boundaries at the same index, monotone because of isotonic regression.)
+
+
+
+==============
+import org.apache.spark.ml.regression.IsotonicRegression
+
+// Loads data.
+val dataset = spark.read.format("libsvm")
+  .load("data/mllib/sample_isotonic_regression_libsvm_data.txt")
+
+// Trains an isotonic regression model.
+val ir = new IsotonicRegression()
+val model = ir.fit(dataset)
+
+println(s"Boundaries in increasing order: ${model.boundaries}\n")
+println(s"Predictions associated with the boundaries: ${model.predictions}\n")
+
+// Makes predictions.
+model.transform(dataset).show()

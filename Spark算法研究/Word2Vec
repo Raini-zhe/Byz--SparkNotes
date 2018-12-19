@@ -1,0 +1,41 @@
+Word2Vec
+
+Word2Vec	setLearningRate(double learningRate)
+          设置初始学习率（默认值：0.025）。
+
+Word2Vec	setMaxSentenceLength(int maxSentenceLength)
+          设置每个句子最大值 长度（ in words ）在输入数据中。
+          任何超过此阈值的句子将被分成最大大小（默认值：1000）
+
+Word2Vec	setMinCount(int minCount)
+          设置minCount，令牌必须显示为包含在word2vec模型的词汇表中的最小次数 vocabulary (default: 5).。去除生癖字
+
+Word2Vec	setNumIterations(int numIterations)
+          设置迭代次数（默认值：1），它应该小于或等于分区数。对于大语料，可以增大这个值。
+
+Word2Vec	setNumPartitions(int numPartitions)
+          设置分区数（默认值：1）。
+
+Word2Vec	setSeed(long seed)
+          设置随机种子（默认值：随机长整数）。
+
+Word2Vec	setVectorSize(int vectorSize)
+          词向量的维度，默认值是100。这个维度的取值一般与我们的语料的大小相关，如果是不大的语料，比如小于100M的文本语料，则使用默认值一般就可以了。如果是超大的语料，建议增大维度。
+
+Word2Vec	setWindowSize(int window)
+          设置单词窗口（默认值：5）--关键词的上下窗口
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+，

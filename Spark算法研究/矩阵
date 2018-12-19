@@ -1,0 +1,199 @@
+（2017.04.12）
+未研究完～～
+   http://cache.baiducontent.com/c?m=9f65cb4a8c8507ed4fece763105392230e54f7257b8c8148228a8448e435061e5a35a3fd7c734e5392d80c235edc210882e4732f77552febc893cc1dcabae2787cc37075671df65612a40eaebb07728737912aaff559b0fbaa6fcdf893&p=8b2a975bcd934eac59ece63e4a0c81&newp=882a9644d79659f52abe9b7c47558e231610db2151d7da116b82c825d7331b001c3bbfb423241200d3ce7b6301ac4e5aeffa3171320625a3dda5c91d9fb4c57479dd3f6e02&user=baidu&fm=sc&query=NaiveBayes%2EsetThresholds&qid=8da326120000aad1&p1=3
+
+归一化：通过观察输入数据的相关因素特征向量的分布，（有没有离群点-而影响聚类/分类/回归等模型效果），若数据均匀则无需归一化。
+   val mat = new RowMatrix(RDD[Vector])
+   val summy = mat.computeColumnSummaryStatistics()
+   summy.mean()
+   summy.variance()
+
+
+-------------1、本地向量 LocalVecotr----------------------------------------------
+
+	DenseVector 和 SparseVector，稠密向量/稀疏向量，其创建方式主要有以下三种（均创建了向量(1.0, 0.0, 2.0）：
+
+	注意，ml/mllib package中有同样的类，不可互相转换。
+
+	import org.apache.spark.mllib.linalg.{Vector, Vectors}
+
+	//创建一个稠密向量
+	val dv : Vector = Vector.dense(1.0,0.0,3.0)
+	//创建一个稀疏向量（第一种方式）
+	val sv1: Vector = Vector.sparse(3, Array(0,2), Array(1.0,3.0))
+	//创建一个稀疏向量（第二种方式）
+	val sv2 : Vector = Vector.sparse(3, Seq((0,1.0),(2,3.0)))
+
+
+
+-------------2、向量标签 LabelVector----------------------------------------------
+
+	从文件中直接读入一个LabeledPoint:
+
+		MLlib提供了一种快捷的方法，可以让用户直接从文件中读取LabeledPoint格式的数据。
+		LIBSVM 是一种文本格式,每行代表一个含类标签的稀疏特征向量。规定其输入文件的格式为：
+
+		label index1:value1 index2:value2.....
+		索引是从 1 开始并且递增。加载完成后,索引被转换为从 0 开始。
+	然后通过
+
+		val test : RDD[LabeledPoint] = MLUtils.loadLibSVMFile(sc, “path”)
+
+	直接读入即可。
+
+
+-------------3、本地矩阵----------------------------------------------------------
+
+	import org.apache.spark.mllib.linalg.{Matrix, Matrices}
+	import org.apache.spark.ml.linalg.{Matrix, Matrices}
+
+	val dm : Matrix = Matrices.dense(3,2, Array(1.0,3.0,5.0,2.0,4.0,6.0))
+	上面的代码段创建了一个3行2列的稠密矩阵：
+	1.0 2.0
+	3.0 4.0
+	5.0 6.0
+
+	很明显，创建的时候是将原来的矩阵按照列变成一个一维矩阵之后再初始化的。下面也一样。
+
+
+
+	// Create a sparse matrix ((9.0, 0.0), (0.0, 8.0), (0.0, 6.0))
+	val sm: Matrix = Matrices.sparse(3, 2, Array(0, 1, 3), Array(0, 2, 1), Array(9, 6, 8))
+		sm: org.apache.spark.ml.linalg.Matrix =
+		3 x 2 CSCMatrix
+		(0,0) 9.0
+		(2,1) 6.0
+		(1,1) 8.0
+
+
+
+
+
+-------------4、分布式矩阵----------------------------------------------------------
+
+MLlib提供了三种分布式矩阵的实现，依据你数据的不同的特点，你可以选择不同类型的数据：
+
+-------------4、(1)RowMatrix---------------------------------------------------------
+
+RowMatrix矩阵只是将矩阵存储起来，一个 RowMatrix 是一个面向行的分布式矩阵,其行索引没有具体含义。
+比如一系列特征向量的一个集合。通过一个 RDD 来代表所有的行,每一行就是一个本地向量。既然每一行由一个本地向量表示,所以其列数就被整型数据大小所限制,其实实践中列数是一个很小的数值。
+
+
+//-----------------------------------------例子：
+import org.apache.spark.mllib.util.MLUtils
+import org.apache.spark.mllib.linalg.Vector
+import org.apache.spark.mllib.linalg.Matrix
+import org.apache.spark.mllib.linalg.distributed.RowMatrix
+import org.apache.spark.mllib.stat.MultivariateStatisticalSummary
+
+// Load training data in LIBSVM format
+val t = MLUtils.loadLibSVMFile(sc, "file:///home/raini/spark/data/mllib/sample_binary_classification_data.txt")
+
+val rows: RDD[Vector] = t.map {case LabeledPoint(a,b) => b} // 取fecture列
+val mat: RowMatrix = new RowMatrix(rows)
+
+val m = mat.numRows() // 行数
+val n = mat.numCols()
+
+注：RowMatrix要从RDD[Vector]构造。
+
+Multivariate summary statistics：
+	通过这个类，可计算方差/均值/最大/最小/count/L1/L2/，矩阵中非0个数...
+
+val summy : MultivariateStatisticalSummary = mat.computeColumnSummaryStatistics()
+
+mat.computeSVD(2) // 计算SVD
+
+//----------------------------------------
+
+
+----------4、(2)行索引矩阵(IndexedRowMatrix)------------------------------------
+
+	IndexedRowMatrix 与 RowMatrix 相似,但有行索引（从0开始，如果索引值最大是9,则算有9行）,可以通过索引值来访问每一行，可以用来识别行和进行 join 操作。
+	本质上是一个含有索引信息的行数据集合(an RDD of indexed rows)。每一行由 long 型索引和一个本地向量组成。一个 IndexedRowMatrix可从一个RDD[IndexedRow]实例创建,这里的 IndexedRow是 (Long, Vector) 的 封 装 类 。 剔 除 IndexedRowMatrix 中 的 行 索 引 信 息 就 变 成 一 个RowMatrix。
+
+	import org.apache.spark.mllib.linalg.distributed.{IndexedRowMatrix, IndexedRow, RowMatrix}
+//-----例1：
+
+	val indexRM = new IndexedRowMatrix(mat.rows.zipWithIndex().map(x => IndexedRow(x._2, x._1))) //：IndexedRow(index = Long, vector = Vector)
+
+//-----例2：
+
+	import org.apache.spark.mllib.linalg.Vectors
+	import org.apache.spark.mllib.linalg.distributed.{IndexedRow, IndexedRowMatrix}
+
+	val v1 = Vectors.dense(Array(1.0,2.0,3.0,4.0))
+	val iRow1:IndexedRow = new IndexedRow(1L,v1)
+
+	val v2 = Vectors.dense(Array(3.0,5.0,4.0,2.0))
+	val iRow2:IndexedRow = new IndexedRow(2L,v2)
+
+	val v3 = Vectors.dense(Array(7.0,6.0,2.0,9.0))
+	val iRow3:IndexedRow = new IndexedRow(3L,v3)
+
+	val rows1 = sc.parallelize(Seq(iRow1,iRow2,iRow3))
+
+	// creating row indexed matrix using RDD[IndexedRow]
+	val iRowMatrix = new IndexedRowMatrix(rows1)
+
+	val cols = iRowMatrix.numCols()
+	val rows1 = iRowMatrix.numRows()
+	iRowMatrix.columnSimilarities().entries.take(8)
+	// 转成RM统计信息
+	val ccss = iRowMatrix.toRowMatrix().computeColumnSummaryStatistics()
+
+	// 计算SVD
+	val svd = iRowMatrix.computeSVD(2)
+
+	// 计算每行与其它所有行的相似度，这里返回6个结果
+	val cs = iRowMatrix.columnSimilarities().entries.take(12)
+
+	// 转成 CoordinateMatrix
+	val a = iRowMatrix.computeGramianMatrix()
+
+//--------
+
+
+-----------4、(3)三元组矩阵(CoordinateMatrix)-----------------------------------------------
+
+	当你的数据特别稀疏的时候怎么办？
+	：一个 CoordinateMatrix 是一个分布式矩阵,其实体集合是一个 RDD。
+	：每一个实体是一个(i: Long, j: Long, value: Double)三元组,其中 i 代表行索引,j 代表列索引,value 代表实体的值。
+	：只有当矩阵的行和列都很巨大,并且矩阵很稀疏时才使用 CoordinateMatrix。-- （TF-IDF用的就是）
+	：一个 CoordinateMatrix可从一个RDD[MatrixEntry]实例创建,这里的 MatrixEntry是 (Long, Long, Double) 的封装类 。
+	：通过调用toIndexedRowMatrix可以将一个CoordinateMatrix转变为一个IndexedRowMatrix(但其行是稀疏的)。目前暂不支持其他计算操作。
+	注意 : 因为我们需要缓存矩阵大小,分布式矩阵的底层RDD必须是确定的(deterministic)。通常来说,使用非确定的 RDD(non-deterministic RDDs)会导致错误。
+ 例子：
+
+	 import org.apache.spark.mllib.linalg.distributed.MatrixEntry
+	 import org.apache.spark.mllib.linalg.distributed.CoordinateMatrix
+
+	 val m1 = new MatrixEntry(1L,2L,1.0)
+	 val m2 = new MatrixEntry(2L,3L,2.0)
+	 val m3 = new MatrixEntry(3L,4L,3.0)
+	 val m4 = new MatrixEntry(4L,5L,4.0)
+
+	 val rows = sc.parallelize(Seq(m1,m2,m3,m4))
+
+	 val coMatrix = new CoordinateMatrix(rows)
+	 coMatrix.entries.take(9)
+
+	 println("Matrix size::"+"("+coMatrix.numRows()+","+coMatrix.numCols()+")")
+	 // Matrix size::(5,6)
+
+CoordinateMatrix矩阵中的存储形式是（row，col，value），就是原始的最稀疏的方式，所以如果矩阵比较稠密，别用这种数据格式
+
+
+-------------、----------------------------------------------------------
+
+
+-------------、将TF-IDF模型得到的DataFrame 转成 MLlib Matrix--------------------------------------
+
+   val a = pipeline.fit(training).transform(training)
+   val b: RDD[Vector] = a.select("features").rdd.map{ case Row(b:Vector) => b}
+   println(nbModel.explainParams() + "\n")
+	 val c = MLUtils.convertMatrixColumnsFromML(b.toDF)
+	 val rows: RDD[Vector] = c.map{case Row(b) => b}
+	 val mat: RowMatrix = new RowMatrix(b)
+
+

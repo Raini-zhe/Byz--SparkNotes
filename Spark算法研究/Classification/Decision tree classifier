@@ -1,0 +1,150 @@
+决策树（用于分类）是一种被认为比其他统计分类器更可解释的分类器。该实现非常适合处理大规模数据并并行构建（二进制）决策树。
+输入格式：在决策树算法的一般实现中，不要求分类特征被虚拟编码。为了提高效率和减少训练时间，我们的实现假设虚拟编码分类特征和虚拟编码类标签。
+建设树：广度优先（并行） or 深度优先（多个节点子树整个并联）
+
+
+决策树是一个树结构（可以是二叉树或非二叉树），借助于树的分支结构实现分类，树的内部结点表示对某个属性的判断，该结点的分支是对应的判断结果；
+叶子结点代表一个类标。使用决策树进行决策的过程就是从根节点开始，测试待分类项中相应的特征属性，并按照其值选择输出分支，直到到达叶子节点，
+将叶子节点存放的类别作为决策结果。决策树算法有一个好处，那就是它可以产生人能直接理解的规则，这是贝叶斯、神经网络等算法没有的特性；
+决策树的准确率也比较高，而且不需要了解背景知识就可以进行分类，是一个非常有效的算法。
+
+随机森林由决策树组成，决策树实际上是将空间用超平面进行划分的一种方法，每次分割的时候，都将当前的空间一分为二，
+
+
+The spark.ml implementation supports random forests for binary and multiclass classification and for regression, using both continuous and categorical features.
+（使用连续和分类的特征。）
+
+（决策树存在过拟合问题，需呀归一化来消除）
+
+分类：目标为 类别型 特征
+回归：目标为 数值型 特征
+
+与随机森林差不多（比随机森林少三个方法设置）
+    随机森林分别训练一组决策树，因此可以并行训练。该算法训练过程中注入随机性，使每个决策树都有点不同。从每颗树相结合的去预测，减少方差，提高测试数据的性能。
+
+
+Training
+    注入训练过程中的随机性包括：
+     采样原始数据集在每次迭代中得到不同的训练集（a.k.a. bootstrapping）。
+     考虑到不同的随机子集的功能在每个树节点分裂。
+
+Prediction
+    为了对一个新实例进行预测，随机森林必须从它的决策树集合中聚合预测。这种聚合在分类和回归是不同的。
+    分类：多数票。每棵树的预测都算作一个类的投票。获得最多选票的类则被预测为该标签。
+    回归：平均。每棵树预测为一个真实的值。平均值大的被预测为该标签。
+
+
+使用技巧
+    两个参数是最重要的,调优通常可以提高性能:
+
+    numTrees:增加树木的数量将减少预测的方差,提高模型的测试时间的准确性。训练时间与树数量呈线性增加。
+    maxDepth:对决策树的层数作出限制，它是分类器为了对样本进行分类所作的一连串判断的最大次数，有利于避免过拟合。
+            增加深度使模型更具表达性和强大。然而,深树需要更长时间来训练,也更容易过度拟合。
+            一般来说,它是可以接受的训练更深层的树木在使用随机森林比使用单一决策树。一棵树比随机森林更容易overfit(因为从平均方差减少多个树在森林里)。
+
+    接下来的两个参数通常不需要调优。然而,他们可以通过调优,加快训练。
+      subsamplingRate:这个参数指定大小的数据集用于训练每棵树在森林中,随着原始数据集的大小的一小部分。默认(1.0)建议,但减少这个分数可以加快训练。
+      featureSubsetStrategy:数量的功能作为候选人在每个树节点分裂。被指定为数量或函数总数的一小部分功能。减少这个数字将加快训练,但有时会影响性能,如果太低了。
+
+
+Bins：
+    对于连续的实数特征，在数据量很大的情况下，对每个可能取值进行（排序）成本就太大了，一个惯用的近似技巧——“箱化” （Binning，我们觉得取值太多了，一个个处理太麻烦，打包起来，处理就简单多了）。
+    然后以箱子为单位，根据每个箱子的最小值和最大值，可以确定划分边界，然后按照信息增益或者其他衡量方式确定最终分裂边界。（Bin个数最多就是所有取值的情况的个数，也就是N（相当于没有使用”箱化”技巧））
+    ：也就是说，原本的预测取值是连续的（需要排序）-需要找到一个合适的值作为预测值，箱化以后，对每个箱子计算最大最小值（即变成对每个箱子的值进行排序），取中间值作为分裂点。
+
+    对于类别特征...，对于二元分类问题，分裂点Split个数直接设为N?1，Bin的个数为N。
+    对于连续的实数特征，标准的做法是将输入进行排序，然后将每个输入或者前后两个输入的平均值即中间点作为分裂点。假设实数特征有N个不同训练的数据，那么分裂点Split的个数就是N。分割区间Bin的个数就是N+1
+    ：但是对于海量数据，或者一个无序的特征有太多的特征值，按照上面做法，就肯定吃不消了。所以一个近似的做法就是，提前为这样的实数特征确定好分裂区间的个数，也就是为什么在决策树设定参数中有maxBins这个参数的来由了。
+    1.对于·类别·特征如果特征值超过maxBins，那么将分裂箱子Bin的数量退化为特征值的个数。
+    2.对于·连续·的特征，如果不同训练特征少于maxBins，那么还是按照前面分析的做法，如果超过了，Bin的个数就设为maxBins，并采取尽量平均的方式选择切割点，使得每个Bin尽量包含相同个数的训练数据。如果训练数据实在太多，可以使用采样的方式，利用采样部分数据作为训练数据再使用上面的方法确定Split和Bin。
+    由于采取了分区间的操作和可能的采样手段，必然降低了决策树的预测精度，但是另一方面却可以大大提升训练速度。实际中据说这样的技巧也没损伤多少精度-:)。
+
+    决策树算法负责为每层生成可能的决策规则,比如在宠物店示例中,这些决策规则类似
+    “重量≥ 100”或者“重量≥ 500”。决策总是采用相同形式:对数值型特征,决策采用 特征
+    ≥ 值 的形式;对类别型特征,决策采用 特征在(值 1, 值 2,...)中 的形式。因此,要尝试的
+    决策规则集合实际上是可以嵌入决策规则中的一系列值。Spark MLlib 的实现把决策规则集
+    合称为“桶”(bin)。桶的数目越多,需要的处理时间越多但找到的决策规则可能更优。
+
+    什么因素会促使产生好的决策规则?直观上讲,好的决策规则应该通过目标类别值对样本
+    作出有意义的划分。比如,如果一个规则将 Covtype 数据集划分为两个子集,其中一个子
+    集的样本全部属于类别 1~3,第二个子集中的样本则都属于和类别 4~7,那么它就是一个
+    好规则,因为这个规则清楚地把一些类别和其他类别分开。如果样本集用一个决策规则划
+    分,划分前后每个集合各类型的不纯性程度没有改善,那么这个规则就没什么价值。沿着
+    该决策规则的分支走下去,每个目标类别的可能取值的分布仍然是一样的,因此实际上它
+    在构造可靠的分类器方面没有任何进步。
+
+
+特征选择
+    在于选取对训练数据具有分类能力的特征，这样可以提高决策树学习的效率。通常特征选择的准则是信息增益（或信息增益比、基尼指数等），每次计算每个特征的信息增益，并比较它们的大小，选择信息增益最大（信息增益比最大、基尼指数最小）的特征。
+
+熵（entropy）
+    它是表示随机变量不确定性的度量。熵越大，随机变量的不确定性就越大，也表示数据更自然。
+
+信息增益（informational entropy）
+    表示得知某一特征后使得信息的不确定性减少的程度。简单的说，一个属性的信息增益就是由于使用这个属性分割样例而导致的期望熵降低。
+
+信息增益（Information Gain）：
+    衡量一个属性区分数据样本的能力。信息增益量越大，这个属性作为一棵树的根节点就能使这棵树更简洁，
+    比如说一棵树可以这么读成，如果风力弱，就去玩；风力强，再按天气、温度等分情况讨论，此时用风力作为这棵树的根节点就很有价值。
+    如果说，风力弱，再又天气晴朗，就去玩；如果风力强，再又怎么怎么分情况讨论，这棵树相比就不够简洁了。计算信息增益的公式需要用到“熵”（Entropy）。
+
+
+val dt = new DecisionTreeClassifier().set...
+
+
+Parameter setters：
+
+    def
+        setCheckpointInterval(value: Int): 设置检查点间隔参数（> = 1）或禁用（-1）。10意味着，每10次迭代缓存一次检查点。
+
+        setFeaturesCol(value: String):
+
+        setImpurity(value: String): 用于信息增益计算的标准（不区分大小写）, Supported: "entropy" and "gini". (default = gini)
+
+        setLabelCol(value: String):
+
+        setMaxBins(value: Int): Must be >= 2 and >= number of categories in any categorical feature. (default = 32)。分裂特征的最大划分数量，每个桶尽可能包含越多相同的类别，表示越合理。每个特征分裂时,最大划分(桶)数量（用于连续属性离散化算法和选择如何分割在每个节点上的特征）。一个桶可包含多个类别特征，但是这些特征尽可能集中在一个桶内
+
+        setMaxDepth(value: Int): (>= 0)(default = 5) 对决策树的层数作出限制，它是分类器为了对样本进行分类所作的一连串判断的最大次数，有利于避免过拟合。Depth 0 means 1 leaf node. Depth 1 means 1 internal node and 2 leaf nodes.
+
+        setMinInfoGain(value: Double): 在树节点拆分上要考虑的最小信息增益（Minimum information gain）.Should be >= 0.0. (default = 0.0)，可0.05..
+
+        setMinInstancesPerNode(value: Int): 分裂后每个孩子必须拥有的最小实例数。如果分裂导致左或右孩子少于mininstancespernode，分裂将被作为无效。Should be >= 1. (default = 1)
+
+        setPredictionCol(value: String):
+
+        setProbabilityCol(value: String): 预测类的条件概率列
+
+        setRawPredictionCol(value: String): 所得结果表示为预测为每一类的得分，有多少类就有多少个得分，取得分最小的 则判别为该类。
+
+        setSeed(value: Long):
+
+        setThresholds(value: Array[Double]): 多类分类调整预测每一类的概率阈值，参数p/t 的最大值计为预测类，p:原始类的概率，t：阈值。长度与类别数一致
+
+        mllib中：
+          val categoricalFeatures = Map(0 -> 2, 1 -> 2)//第0列有2个特征，第一列有2个类别特征  -- 可作为setMaxBins的参考
+
+
+
+val dtModel = dt.fit(dataSet)
+
+    dtModel.transform(dataset: Dataset[_]): DataFrame
+      得到：1.predicted labels as predictionCol of type Double
+           2.raw predictions (confidences) as rawPredictionCol of type Vector
+           3.probability of each class as probabilityCol of type Vector.
+
+
+预测数据：
+    val predictions = dtModel.transform(testData)
+
+
+模型评估：
+    val evaluator = new RegressionEvaluator()
+      .setLabelCol("label")
+      .setPredictionCol("prediction")
+      .setMetricName("rmse")
+    val rmse = evaluator.evaluate(predictions)
+    println("Root Mean Squared Error (RMSE) on test data = " + rmse)
+
+    val treeModel = pipelineModel.stages(1).asInstanceOf[DecisionTreeRegressionModel]
+    println("Learned regression tree model:\n" + treeModel.toDebugString)

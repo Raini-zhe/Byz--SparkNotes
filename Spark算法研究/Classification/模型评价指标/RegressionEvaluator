@@ -1,0 +1,55 @@
+
+回归模型评估类
+
+Parameter setters：
+
+  def
+      setLabelCol(value: String): BinaryClassificationEvaluator.this.type // 设置 标签 列
+  def
+      setMetricName(value: String): BinaryClassificationEvaluator.this.type
+      // 设置 评估列 名字 （param for metric name in evaluation ("rmse" "mse" "r2" "mae")）
+  def
+      setRawPredictionCol(value: String): BinaryClassificationEvaluator.this.type // 设置 预测 列
+
+
+
+val metricName: Param[String]
+      Param for metric name in evaluation. Supports:
+
+      "rmse" (default): root mean squared error
+      "mse": mean squared error
+      "r2": R2 metric
+      "mae": mean absolute error
+
+
+    1、均方误差（MSE）：平方误差的均值，用作最小二乘回归的损失函数。
+        ：所有样本预测值和实际值平方差之和，最后除以样本总数
+
+    2、均方根误差（RMSE）：MSE的平方根，类似损失函数，会进一步放大误差。
+
+    3、均方根对数误差（RMSLE）：可以认为是对预测值和目标值进行对数变换后的RMSE。
+        ：适用于目标值域很大，并且没有必要对预测值和目标值的误差进行惩罚的情况; 也适用于计算误差的百分率而不是误差的绝对值。
+
+    4、R-平方系数（r2）：即判定系数，用来评估模型拟合数据的好坏，常用于统计学中。R2具体测量目标变量的变异度（degree of variation），最终结果为0到1的一个值，1表示模型能够完美拟合数据。
+
+
+
+rawPredictionCol: 可以设置一个名字，如"score"，代表输出的DataFrame列名。所得结果表示为预测为每一类的得分，有多少类就有多少个得分，取得分最小的 则判别为该类。
+
+
+
+主要方法：
+    def
+        evaluate(dataset: Dataset[_]): Double  -- Evaluates model output and returns a scalar metric.
+
+
+=========================================================================================
+
+mllib的回归评价：
+
+    有(RegressionMetrics 和 RankingMetrics）两个实现类 -- Spark机器学习 P81
+
+    val regressionMetrics = new RegressionMetrics(predictedAndTrue)
+
+    regressionMetrics.meanSquredError
+    regressionMetrics.rootMeanSquaredError

@@ -1,0 +1,21 @@
+
+二分类模型评估类
+
+Parameter setters：
+
+  def
+      setLabelCol(value: String): BinaryClassificationEvaluator.this.type // 设置 标签 列
+  def
+      setMetricName(value: String): BinaryClassificationEvaluator.this.type
+      // 设置 评估列 名字 （param for metric name in evaluation (supports "areaUnderROC" (default), "areaUnderPR")）
+  def
+      setRawPredictionCol(value: String): BinaryClassificationEvaluator.this.type // 设置 预测 列
+
+
+rawPredictionCol: 可以设置一个名字，如"score"，代表输出的DataFrame列名。所得结果表示为预测为每一类的得分，有多少类就有多少个得分，取得分最小的 则判别为该类。
+
+
+
+主要方法：
+    def
+        evaluate(dataset: Dataset[_]): Double  -- Evaluates model output and returns a scalar metric.

@@ -1,0 +1,137 @@
+一 。对spark向量矩阵特征转换的深度研究
+二 。各类特征对应的应用模型研究
+
+（ 1-3 这些正则方法只针对稠密特征有效，在稀疏特征上不会给出好的结果。）(只针对回归，决策树+贝叶斯 -概率模型 不受特征标准化影响)
+
+1.Normalizer(范数p-norm规范化)
+Normalizer是一个转换器，它可以将一组特征向量（通过计算p-范数）规范化。参数为p（默认值：2）来指定规范化中使用的p-norm。规范化操作可以使输入数据标准化，对后期机器学习算法的结果也有更好的表现。
+val normalizer = new Normalizer().setP(1.0) -- L1正则化，默认L2
+
+两种正则化方法：
+1.（正则化特征）
+normalizer.transform(dataFrame)， -- 个人理解为全局性质的转换
+normalizer.transform(dataFrame, normalizer.p -> 2) -- 重新指定为L2正则化
+对数据集单个特征进行转换，减去平均值（特征对齐）或是标准的正则转换（使得该特征的平均值和标准差分别为0和1）
+2.（正则化特征向量）
+normalizer.transform(dataFrame, normalizer.p -> Double.PositiveInfinity) -- L\infty正则化 - 对每一行除以每行的最大值，使其达到归一化的效果。
+
+L1(Lasso) 和 L2(Ridge) 的区别：
+    1.使用L2可以得到平滑的权值(抛物线) -- L2范数是指向量各元素的平方和然后求平方根。在回归里面，有人把有它的回归叫“岭回归”（Ridge Regression），也有叫“权值衰减weight decay”。它的强大功效是改善机器学习里面一个非常重要的问题（过拟合fitting）。
+    2.使用L1可以得到稀疏的权值(V线) -- 使用L1正则后的权值更新规则多了一项 η * λ * sgn(w)/n，这一项 当w为正时，更新后的w变小。当w为负时，更新后的w变大——因此它的效果就是让w往0靠，使网络中的权重尽可能为0，也就相当于减小了网络复杂度，防止过拟合。所以说L1可以得到更稀疏的权值。
+
+我们让L2范数的规则项||W||2最小，可以使得W的每个元素都很小，都接近于0，但与L1范数不同，它不会让它等于0，而是接近于0，这里是有很大的区别的哦--平滑与稀疏。
+从优化或者数值计算的角度来说，L2范数有助于处理 condition number（局部最小值太多，那我们的优化算法就很容易陷入局部最小而不能自拔）不好的情况下矩阵求逆很困难的问题。因为目标函数如果是二次的，对于线性回归来说，那实际上是有解析解的，求导并令导数等于零即可得到最优解
+总结：L1会趋向于产生少量的特征，而其他的特征都是0，而L2会选择更多的特征，这些特征都会接近于0。Lasso在特征选择时候非常有用，而Ridge就只是一种规则化而已。
+
+
+2.StandardScaler（z-score规范化：零均值标准化）
+可以将输入的一组Vector特征向量规范化（标准化），使其有统一的的标准差（均方差）以及均值为0。它需要如下参数：
+1. withStd：默认值为真，将数据缩放到统一标准差方式。
+2. withMean：该方法将产出一个稠密的输出向量，所以--（不适用于（稀疏）向量。对于稀疏输入矩阵-需设为false。
+
+StandardScaler是一个Estimator，它可以通过拟合（fit）数据集产生一个StandardScalerModel，用来统计汇总。
+    scalerModel.std -- 求列方差
+    scalerModel.mean -- 求列均值
+
+new StandardScaler().setWithStd(true).setWithMean(true)--（所有特征减去列均值）(除以标准差->方差的平方根)-缩放
+
+注意：如果特征的标准差为零，则该特征在向量中返回的默认值为0.0。
+注意：尤其是（离群点）左右了MinMaxScaler规范化,需要使用StandardScaler。
+    MaxAbsScaler(绝对值规范化)不会破坏数据的稀疏性。
+
+3.MinMaxScaler（最大-最小规范化）
+MinMaxScaler将所有特征向量线性变换到指定范围（最小-最大值）之间（归一化到[min, max]，通常为[0,1]）。它的参数有：
+1. min：默认为0.0，为转换后所有特征的下边界。
+2. max：默认为1.0，为转换后所有特征的上边界。
+在计算时，该模型将特征向量一个个分开计算并转换到指定的范围内的。
+注意：
+（1）最大最小值可能受到离群值的左右。Bucketizer（去除离群值）
+（2）零值可能会转换成一个非零值，因此稀疏矩阵将变成一个稠密矩阵。
+
+4.MaxAbsScaler(绝对值规范化)
+各特征值除以每个特征的最大值的绝对值，缩放到[-1,1]之间。因为它不会转移／集中数据，所以不会破坏数据的稀疏性。
+例如：特征向量[-1000,100,10],最大绝对值为1000，因此转换为[-1000/1000,100/100,10/1000]=[-1,0.1,0.01]。
+注意：如果最大绝对值是一个离群点，显然这种处理方式是很不合理的。
+
+5.Bucketizer
+分箱（分段处理）将（连续数值）转换为离散类别。-- 应用（去除离群值）
+splits（分箱数）：分箱数为n+1时，将产生n个区间。除了最后一个区间外，每个区间范围［x,y］由分箱的x，y决定。分箱必须是严格递增的。分箱（区间）见在分箱（区间）指定外的值将被归为错误。两个分裂的例子为Array(Double.NegativeInfinity, 0.0, 1.0, Double.PositiveInfinity)以及Array(0.0, 1.0, 2.0)。
+注意：
+当不确定分裂的上下边界时，应当添加Double.NegativeInfinity和Double.PositiveInfinity以免越界。
+分箱区间必须严格递增，例如： s0 < s1 < s2 < ... < sn
+
+// Double.NegativeInfinity：负无穷
+// Double.PositiveInfinity：正无穷
+// 分为6个组：[负无穷,-100),[-100,-10),[-10,0),[0,10),[10,90),[90,正无穷)
+
+val splits = Array(Double.NegativeInfinity, -100, -10, 0.0, 10, 90, Double.PositiveInfinity)
+val data: Array[Double] = Array(-180,-160,-100,-50,-70,-20,-8,-5,-3, 0.0, 1,3,7,10,30,60,90,100,120,150)
+
+val dataFrame = spark.createDataFrame(data.map(Tuple1.apply)).toDF("features")
+
+val bucketizer = new Bucketizer().setInputCol("features").setOutputCol("bucketedFeatures").setSplits(splits)
+val bucketedData = bucketizer.transform(dataFrame)
+
+
+应用：过滤离群值
+    bucketedData.filter($"bucketedFeatures" <= 1).show(50,truncate=false)
+    +--------+----------------+
+    |features|bucketedFeatures|
+    +--------+----------------+
+    |-180.0  |0.0             |
+    |-160.0  |0.0             |
+    |-100.0  |1.0             |
+    |-50.0   |1.0             |
+    |-70.0   |1.0             |
+    |-20.0   |1.0             |
+    +--------+----------------+
+
+比如特征是年龄，是一个连续数值，需要将其转换为离散类别(未成年人、青年人、中年人、老年人），就要用到Bucketizer了。
+
+
+6.ElementwiseProduct (Hadamard乘积)
+（以列为单位），对输入向量的每个元素乘以一个权重（weight），即对输入向量每个元素逐个进行放缩。对输入向量v 和变换向量scalingVec 使用Hadamard product(阿达玛积)进行变换，最终产生一个新的向量。
+例如：
+val dataFrame = spark.createDataFrame(Seq(("a", Vectors.dense(1.0, 2.0, 3.0)),..)).toDF("id", "vector")
+val transformingVector = Vectors.dense(0.0, 1.0, 2.0)
+val transformer = new ElementwiseProduct().setScalingVec(transformingVector)
+
+
+7.SQLTransformer（SQL变换）
+用来转换由SQL定义的陈述。目前仅支持SQL语法如"SELECT ... FROM THIS ..."，其中"THIS"代表输入数据的基础表(DataFrame)。
+例如：
+val sqlTrans = new SQLTransformer().setStatement(
+"SELECT *, (v1 + v2) AS v3, (v1 * v2) AS v4 FROM THIS")
+sqlTrans.transform(df).show()
+
+
+8.VectorAssembler（特征向量合并）
+VectorAssembler是一个转换器，它将给定的(若干列)合并为(单列)向量。它可以将原始特征和一系列通过其他转换器变换得到的特征合并为单一的特征向量，来训练如逻辑回归和决策树等机器学习算法。VectorAssembler可接受的输入列类型：数值型、布尔型、向量型。输入列的值将按指定顺序依次添加到一个新向量中。
+例如：
+new VectorAssembler().setInputCols(Array("hour", "mobile", "userFeatures")).setOutputCol("features")
+.transform(dataset)
+
+原始DF：
+    id | hour | mobile | userFeatures     | clicked
+    ----|------|--------|------------------|---------
+     0  | 18   | 1.0    | [0.0, 10.0, 0.5] | 1.0
+
+合并后：
+    id | hour | mobile | userFeatures     | clicked | features
+    ----|------|--------|------------------|---------|-----------------------------
+     0  | 18   | 1.0    | [0.0, 10.0, 0.5] | 1.0     | [18.0, 1.0, 0.0, 10.0, 0.5]
+
+
+9.QuantileDiscretizer（分位数离散化）
+和Bucketizer（分箱处理）一样：将连续数值特征转换为离散类别特征。实际上Class QuantileDiscretizer extends （继承自） Class（Bucketizer）。不同的是这里不再自己定义splits（分类标准），而是定义分几箱(段）就可以。QD自己调用函数计算分位数，并完成离散化。
+
+-参数1：（分级的数量）由numBuckets参数决定。
+-参数3：（分级的范围）由渐进算法（approxQuantile ）决定。上下边界将设置为正（+Infinity）负（-Infinity）无穷，覆盖所有实数范围。
+-参数2：（渐进的精度）由relativeError参数决定。设置为0时，将会计算精确的分位点（计算代价较高）。
+
+例如：
+    val discretizer = new QuantileDiscretizer().setInputCol("hour").setOutputCol("result")
+        .setNumBuckets(3) //分3（桶/段/箱）
+        .setRelativeError(0.1) //设置precision-控制相对误差
+    val result = discretizer.fit(df).transform(df)
+

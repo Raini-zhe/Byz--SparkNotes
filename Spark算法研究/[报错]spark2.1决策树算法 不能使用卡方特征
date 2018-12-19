@@ -1,0 +1,46 @@
+java.lang.IllegalArgumentException: Feature 0 is marked as Nominal (categorical), but it does not have the number of values specified.
+
+原代码：
+
+    val training: DataFrame = train
+
+    val labelIndexer = new StringIndexer().setInputCol("label").setOutputCol("indexedLabel").fit(training)
+
+    val hashingTF = new HashingTF().setInputCol("words").setOutputCol("rawFeatures")
+    val idf = new IDF().setInputCol("rawFeatures").setOutputCol("features")
+
+    val chiSqSelector = new ChiSqSelector().setFeaturesCol("features").setLabelCol("label").setOutputCol("selectedFeature")
+
+    val dtModel = new DecisionTreeClassifier().setLabelCol("indexedLabel").setFeaturesCol("features")
+
+    val labelConverter = new IndexToString().setInputCol("prediction").setOutputCol("predictedLabel").setLabels(labelIndexer.labels)
+    val pipeline = new Pipeline().setStages(Array(labelIndexer, hashingTF, idf, dtModel, labelConverter))
+
+    val a = pipeline.fit(training)
+    val b = a.transform(test) // <----
+
+
+找到报错原因：
+    （一开始以为是只支持二分类，或者是label没有索引化（这里本身就是Doubel类型了，并不需要））
+    spark2.1决策树算法 不能使用卡方特征，否则报错，原因不详。
+
+
+修改后：
+
+    val training: DataFrame = train
+
+    val hashingTF = new HashingTF().setInputCol("words").setOutputCol("rawFeatures")
+    val idf = new IDF().setInputCol("rawFeatures").setOutputCol("features")
+
+    val dtModel = new DecisionTreeClassifier().setLabelCol("indexedLabel").setFeaturesCol("features")
+
+    val pipeline = new Pipeline().setStages(Array(hashingTF, idf, dtModel))
+    val a = pipeline.fit(training)
+    val b = a.transform(test) // <----
+
+
+
+正常运行。
+
+
+

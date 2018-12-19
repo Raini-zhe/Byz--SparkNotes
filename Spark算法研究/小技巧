@@ -1,0 +1,147 @@
+
+(1)
+org.apache.spark.sql.DataFrameNaFunctions
+scala>	val	predictions	=	model.transform(test).na.drop   // 删除任何有空值的行
+
+(2)
+Optimizing	joins：
+    查看使用策略
+    scala>	mydf.explain
+    scala>	mydf.queryExecution.executedPlan
+
+(2)
+  对于数组，优先使用length而不是size
+    不要通过计算length来检查empty，使用 Afterseq.nonEmptyseq.nonEmptyseq.isEmpty
+    -- Beforeseq.length > 0seq.length != 0seq.length == 0
+    不要直接使用length来比较
+    -- Beforeseq.length > nseq.length < nseq.length == nseq.length != n
+    // 可使用 Afterseq.lengthCompare(n) > 0 seq.lengthCompare(n) < 0 seq.lengthCompare(n) == 0 seq.lengthCompare(n) != 0
+
+    计算length有时候非常昂贵,有可能将花费从O(length)减少到O(length min n)。
+    对于无限的stream来说，上面的技巧是绝对必要的。
+
+
+
+
+(3)
+压缩：
+    scala>	mydf.write.option("compression","snappy").parquet("hdfs://localhost:9000/user/hduser/mydata")
+    Spark	also	supports	 lz4 	and	 lzf ,	besides	Snappy.
+
+
+setting	Kryo	as	a	serializer:
+    	$	spark-shell	--conf	spark.serializer=org.apache.spark.serializer.KryoSerializer
+
+      register	your own	classes：
+          scala>	sc.getConf.registerKryoClasses(Array(classOf[com.infoobjects.CustomClass1],classOf[com.infoobjects.Cus
+
+
+Optimizing	the	level	of	parallelism：
+    1. scala>	sc.textFile("hdfs://localhost:9000/user/hduser/words",10)
+    2. spark-shell	--conf	spark.default.parallelism=10
+
+    scala>	sc.defaultParallelism
+
+    -- coalesce(numPartitions)、repartition(numPartitions)
+
+
+Understanding	project	Tungsten
+
+
+(4)
+ 例：
+      val featureColumns = df.columns.diff(labelColumn :: ignored)   <------ DataFrame可通过该方法得到列名组合(Araay[String])---是减法操作
+      new VectorAssembler()
+        .setInputCols(featureColumns)
+        .setOutputCol("features").transform(dfToDouble).drop(df.columns.diff(labelColumn :: ignored):_*)  <----- :_*可将数组里的内容展开
+
+    child ++ newChild - 序列
+    : - 类型归属，一个帮助编译器理解的提示，该表达式具有什么类型
+    _* - 占位符接受任何值+ vararg运算符
+    child ++ newChild : _*扩展Seq[Node]到Node*（告诉编译器，我们比一个varargs，而不是一个序列）。特别适用于仅接受变量的方法。
+
+（5）
+Tuple:
+      val documentDF = spark.createDataFrame(Seq(
+        "Hi I heard about Spark".split(" "),
+        "元组 的 实际 类型 取决 于 它 包 含 的 数 量 和 元素 以及 这  些 元素 的 类型 。 I wish Java could use case classes I wish Java could use case classesI wish Java could use case classesI wish Java could use case classes  case classes I wish Java could use case classesI wish Java could use case classesI wish Java could use case classes".split(" "),
+        "Logistic regression models are neat".split(" ")
+      ).map(Tuple1.apply)).toDF("text")
+      documentDF.show(6,false)
+
+      Tuple1就是元组，无什么22的限制，
+      Tuple2就是2元组
+      Tuple3就是3元组
+      TupleN最大可以到22
+
+
+(6)
+    //获取系统时间
+	import java.util.Calendar
+	Calendar.getInstance().getTime()
+
+
+
+(7)
+Scala 保留小数
+	val a = 3.1415926
+	//保留两位小数
+	val b =  a.formatted("%.2f")
+	println(b)  //3.14
+
+
+
+(8)
+spark读取csv文件
+
+  val df = spark.read.
+      format("csv").//com.databricks.spark.xmloption("rowTag", "ROW").
+      option("header","true").
+      option("inferSchema", "false"). //是否自动推到内容的类型
+      option("delimiter","\\t").
+      load("file:/home/biyuzhe/cdr_test.csv")//.withColumn("partitiontime",to_date(col("TALKSTARTTIME"))
+    df.write.mode("overwrite").saveAsTable("eversecphone.cdr_big")
+
+
+(9)
+    val startTime = System.nanoTime()
+    f
+    val endTime = System.nanoTime()
+    println(s"Execution time in $name: " + (endTime - startTime).toDouble / 1000000000 + " seconds" + "\n")
+
+
+
+(10) 
+ 数据类型转换
+
+ 1. interceptstatus_data.selectExpr("cast(interceptstatus as string)").show
+ 2. where(interceptstatus_data.col("interceptstatus").cast(IntegerType).as("interceptstatus") > 0).show
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#
+
+

@@ -1,0 +1,81 @@
+
+（1）构造Model
+
+    用LogisticRegression来构建model， 方法”val model = lr.fit(smallBinaryDataset)”。
+
+
+（2）计算均值，方差和分类数量 （仅用于mllib MultivariateOnlineSummarizer）
+
+    - （这些方法仅在mllib stat包里有，ml还未实现）- （ml的 new LogisticRegression().setFamily("multinomial")）
+
+    mllib多分类:
+      使用MultivariateOnlineSummarizer和MultiClassSummarizer类，运用instrances.treeAggregate方法来计算。
+      import org.apache.spark.mllib.stat.MultivariateOnlineSummarizer
+      val mlr = new LogisticRegression()
+      trainingSummary.asInstanceOf[MultivariateOnlineSummarizer] <- 可计算normL1/mean/....
+
+      评估类：MultivariateOnlineSummarizer
+
+
+    ml多分类：
+      val training = spark.read.format("libsvm").load("file:///home/raini/spark/data/mllib/sample_libsvm_data.txt")
+      val mlr = new LogisticRegression().setFamily("multinomial") <--
+      val mlrModel = mlr.fit(training)
+
+      mlrModel.hasSummary <- Boolean = false（说明不支持使用统计）
+      mlrModel.summary    <- 报错，不支持
+
+      特征数：mlrModel.numFeatures
+      类别数：mlrModel.numClasses
+
+      评估类：new MulticlassClassificationEvaluator().setLabelCol("label").setPredictionCol("prediction").setMetricName("accuracy")
+
+
+    （ml逻辑回归中，可设置参数：final val aggregationDepth: IntParam Permalink -- Param for suggested depth for treeAggregate (>= 2).）
+
+
+
+
+
+（3）计算系数矩阵（Coefficient Matrix），截距矢量（Intercept Vector）和目标值历史（Objective History）
+
+      // coefficients and intercepts for logistic regression with multinomial family
+
+      mlrModel.coefficientMatrix
+      mlrModel.interceptVector
+
+
+
+（4）代价函数（Cost Function）
+
+    代价函数（LogisticCostFun）会调用LogisticAggregator来计算当前系数矩阵（coefficients）下每一个样本（instance）的实际输出值（margin）与期望值（label）的损失平均。
+    :Aggregator是一种信息处理工具。信息（聚合器）
+
+    回归分析的目的：就是选择一个最好的（系数矩阵）来使损失最小，即所有样本最大回归在某个函数上。
+
+    如果正则参数L2不为0，那么会利用上一步产生的梯度矩阵来得到一个正则值来调整损失结果。
+
+    LogisticAggregator的Add方法被所有样本调用，最后得到总的损失值和总的权值，然后可以得到损失平均值。如果是2分类，调用binaryUpdateInPlace计算，否则调用multinomialUpdateInPlace。
+
+
+
+
+（5）优化器（Optimizer）
+
+    优化器（BreezeLBFGS）采用开源的Breeze库的LBFGS计算方法。
+    LBFGS计算方法的推导见LBFGS方法推导（https://liuxiaofei.com.cn/blog/lbfgs%E6%96%B9%E6%B3%95%E6%8E%A8%E5%AF%BC/）
+
+    迭代数据：
+      优化器会利用损失函数计算损失值，利用 强Wolfe规则（它要求下降后的值比之前要小，并且梯度要小于之前的c2倍） 计算步长更新系数进行下一次迭代，直到满足迭代终止条件。（即只有满足如损失小于给定的值，或下降梯度小于给定的值等才算迭代完成。）
+
+
+（6）迭代数据
+
+    优化器会利用损失函数计算损失值，利用强Wolfe规则计算步长更新系数进行下一次迭代，直到满足迭代终止条件。
+    即只有满足如损失小于给定的值，或下降梯度小于给定的值等才算迭代完成。
+
+    强Wolfe准则计算步长：它要求下降后的值比之前要小，并且梯度要小于之前的c2倍。在计算每一步的试探步长时，这里采用用立方插值进行计算
+
+
+（7）混淆矩阵
+    

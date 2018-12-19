@@ -1,0 +1,86 @@
+人生苦短，为什么不用XGBoost呢？不仅效果好，收敛快，对数据缺失鲁棒性强，还能自动对特征重要性排序。
+
+
+
+http://dmlc.ml/docs/scaladocs/xgboost4j-spark/index.html#ml.dmlc.xgboost4j.scala.spark.XGBoostModel
+
+https://github.com/rotationsymmetry/sparkxgboost/blob/master/src/test/scala/rotationsymmetry/sxgboost/SparkXGBoostClassifierSuite.scala
+
+
+
+xgboost对label的有个要求，就是要从0开始。
+	比如2分类，label只能是0,1
+	3分类，label只能是0,1,2
+
+
+所有参数:
+	http://xgboost.readthedocs.io/en/latest/parameter.html
+
+
+XGBoost Parameters: 
+	
+
+General Parameters
+
+	1.booster [default=gbtree]
+	: which booster to use, can be gbtree, gblinear or dart. gbtree and dart use tree based model while gblinear uses linear function.
+
+	: xgboost的弱分类器有三种gbtree, gblinear or dart.
+	  第一个和第三个都是树。
+	  第二个是逻辑回归，但是本质它并没有被boost，可以看作只是普通的sgd classifier。
+	: 因为对于线性回归来说，stack是没有意义的，这里的gblinear的意思实际上就是用sgd的迭代方法来训练一个LASSO线性模型。此时基于gblinear的xgboost就没有真正的‘boost’，只是一个用sgd求解的普通线性模型。
+
+	2.silent [default=0]
+	: 0 means printing running messages, 1 means silent mode.
+
+	3.nthread [default to maximum number of threads available if not set]
+	: number of parallel threads used to run xgboost
+
+	4. num_pbuffer [set automatically by xgboost, no need to be set by user]
+	: size of prediction buffer, normally set to number of training instances. The buffers are used to save the prediction results of last boosting step.
+	
+	5. num_feature [set automatically by xgboost, no need to be set by user]
+	: feature dimension used in boosting, set to maximum dimension of the feature
+
+
+
+(不同的booster有不同的参数)
+	Parameters for Tree Booster ¶ (gbtree or dart)
+	Parameters for Linear Booster¶ ( gblinear - 逻辑回归)
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#
