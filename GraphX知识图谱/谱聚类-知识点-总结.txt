@@ -1,0 +1,5 @@
+
+SimRank:基于图结构的相似度计算方法:http://www.cnblogs.com/zhangchaoyang/articles/4575809.htm
+  a和b的相似度等于a的in-neighbors和b的in-neighbors相似度的平均值。
+  (我们把A、B当成两个人，把a、b、c当成三件商品，有向边代表人购买的商品。
+  simrank的基本思想是：如果两个实体相似，那么跟它们相关的实体应该也相似。比如在上图中如果a和c相似，那么A和B应该也相似，因为A和a相关，而B和c相关。)

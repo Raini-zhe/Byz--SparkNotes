@@ -1,0 +1,126 @@
+
+pyspark用法:
+https://blog.csdn.net/weixin_41734700/article/details/80542017
+https://www.jianshu.com/p/7e95b9804d93
+
+
+
+PySpark使用第三方包(不加=也行)：
+    1.$ ./pyspark --driver-class-path=/path/to/elasticsearch-hadoop.jar --jars=/path/to/elasticsearch-hadoop.jar
+    2.spark-env.sh: export SPARK_CLASSPATH=$SPARK_CLASSPATH:/path/to/elasticsearch-hadoop.jar
+    两个方法设置不可以同时存在，方法2好像可以导入多个包
+
+
+
+spark = SparkSession \
+    .builder \
+    .appName("data_prossesing") \
+    .master("local[4]") \
+    .config("spark.executor.memory", "4g") \
+    .config("spark.driver.memory", "1g") \
+    .config('spark.executor.cores', '6') \
+    .config('spark.cores.max', '10') \
+    .getOrCreate()
+
+
+DF一行拆分多行：
+    pyspark.function.sql.explode,split
+    df['col4']:'a b c'...
+    df.withColumn('col4', explode(spalit('col4',' '))).show()
+    
+
+判断字段为空：
+    if df.rdd.inEmpty:
+
+
+
+
+join1:
+lookup = sqlContext.createDataFrame([(1, "foo"), (2, "bar")], ("k", "v"))
+df_with_x6 = (df_with_x5
+    .join(lookup, col("x1") == col("k"), "leftouter")
+    .drop("k")
+    .withColumnRenamed("v", "x6"))
+
+join_2:
+l_df = spark.createDataFrame(l).withColumnRenamed('_1','_c0')
+new_df = l_df.join(df,'_c0','inner').drop("_c0").withColumnRenamed('_2','_c0')#.count() #
+
+
+
+select:
+    df.select('*', (df.age + 10).alias('ageP'))
+
+
+
+RDD->DataFrame:
+
+lines = sc.textFile("employee.txt")  
+    parts = lines.map(lambda l: l.split(","))  
+    employee = parts.map(lambda p: Row(name=p[0], salary=int(p[1])))  
+
+
+DataFrame转换成RDD:
+employee_result = spark.sql("SELECT name,salary FROM employee WHERE salary >= 14000 AND salary <= 20000")  
+result = employee_result.rdd.map(lambda p: "name: " + p.name + "  salary: " + str(p.salary)).collect()  
+  
+
+字符匹配：
+from pyspark.sql.functions import split,substring
+pyspark.sql.functions.substring(str, pos, len)
+
+>>> df = spark.createDataFrame([('abcd',)], ['s',])
+>>> df.select(substring(df.s, 0, 3).alias('s')).collect()
+[Row(s=u'ab')]
+
+>>> df.select(split(df.s, '[0-9]+').alias('s')).collect()
+[Row(s=[u'ab', u'cd'])]
+
+# ------------
+cdr_ovs = cdr_DF.where(substring(cdr_DF.phone2, 0, 2) == '00').where(substring(cdr_DF.phone2, 0, 3) == '019')
+a =cdr_ovs.where(substring(cdr_DF.phone2, 0, 3) == '019')
+
+cdr_DF.filter(cdr_DF.phone2.startswith('00') | cdr_DF.phone2.startswith('019')).show()
+
+
+# ----------------(日期处理函数)
+from pyspark.sql.functions import date_format,to_date
+
+（1）
+cdr_DF = callRecord.map(lambda p: Row(call_event=p[0], phone1=p[1], phone1_type=int(p[2]), phone1_province=p[3], phone1_city=p[4], phone2=p[5], phone2_type=int(p[6]), phone2_province=p[7], phone2_city=p[8], answerTime=p[9], callDuration=p[10]))\
+    .toDF().withColumn("partitiontime",date_format('answerTime', 'yyy-dd-MM'))
+
+（2）
+cdr_DF = cad_to_df.select( "call_event", \
+                           "phone1", "phone1_type", "phone1_province", "phone1_city", \
+                           "phone2", "phone2_type", "phone2_province", "phone2_city", \
+                           "answerTime", "callDuration", \
+                           date_format('answerTime', 'yyy-dd-MM').alias('partitiontime') )
+
+（3）
+cdr_DF = cad_to_df.selectExpr("phone1", to_date(cad_to_df.answerTime, 'yyyy-MM-dd HH:mm:ss').alias('partitiontime') )#.collect()
+
+（4）
+>>> df = spark.createDataFrame([('1997-02-28 10:30:00',)], ['t'])
+>>> df.select(to_date(df.t, 'yyyy-MM-dd HH:mm:ss').alias('date')).collect()
+[Row(date=datetime.date(1997, 2, 28))]
+
+
+
++--------------------+------------+----------+-----------+-----------+---------------+-----------+---------------+-----------+---------------+-----------+-------------+
+|          answerTime|callDuration|call_event|     phone1|phone1_city|phone1_province|phone1_type|         phone2|phone2_city|phone2_province|phone2_type|partitiontime|
++--------------------+------------+----------+-----------+-----------+---------------+-----------+---------------+-----------+---------------+-----------+-------------+
+|2017-09-19 23:59:...|          17|  call_src|13126525713|         北京|             北京|          2| 00251942507816|       NULL|          埃塞俄比亚|          0|   2017-19-09|
+|2017-09-19 23:57:...|           2|  call_src|17180033578|         --|             --|          9|008613901743367|         --|             --|          2|   2017-19-09|
+|2017-09-19 23:57:...|          10|  call_src|18610305111|         北京|             北京|          2| 00817044716419|       NULL|             日本|          0|   2017-19-09|
+
+
+
+
+
+
+
+
+#
+cdr_first.cube("phone1", "callDuration","phone1_type", "phone2" ).agg(grouping("phone1"), count("phone1").alias("c1")).show() #.orderBy(desc("count(phone1)"))
+grouping("phone1")：该列是否被聚合（0：未被聚合，1：被聚合）

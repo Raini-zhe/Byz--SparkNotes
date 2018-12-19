@@ -1,0 +1,28 @@
+
+针对并行的一组起始节点运行个性化的PageRank进行固定次数的迭代。 返回一个包含相对于所有起始节点的pagerank（作为稀疏向量）的顶点属性的图形，以及归一化边缘权重
+
+
+基本思想
+	在原始的pagerank算法中，我们假设user会以p的概率沿着当前页面包含的超链接浏览其他网页，同时以1−p的概率随机浏览一个网页。
+	但是，如果我们知道这个用户只对体育类的网页感兴趣，我们是不是就可以改变一下用户的行为，让其以1−p的概率随机浏览一个体育类的网页呢？
+	Personalized Pagerank就是基于这个思想，跟传统pagerank唯一的不同就在于使得用户不再是以1−p的概率随机浏览一个网页，而是以1−p的概率随机浏览某一个主题内的页面。
+
+
+算法框架
+	首先要明确的是，我们需要对每个主题都做一遍pagerank，求出该主题下各个页面的pagerank值。
+	实际使用时，对于一个用户的一个查询，我们首先要知道这个用户对哪个主题感兴趣（比如可以通过一些自然语言处理的方法获取），然后利用用户感兴趣的主题的pagerank值，对搜索结果进行排序。
+
+
+传统pagerank可以随机访问任何页面，而personalized pagerank则是只能随机访问属于主题k的页面（但是可以通过超链接进入不属于主题k的页面）。
+
+
+
+ParallelPersonalizedPageRank
+	def maxIter(value: Int): ParallelPersonalizedPageRank.this.type
+	def resetProbability(value: Double): ParallelPersonalizedPageRank.this.type - Reset probability "alpha" --(默认0.15,可设0.01,若有节点连接则>0.01)
+	def run(): GraphFrame
+	def sourceIds(values: Array[Any]): ParallelPersonalizedPageRank.this.type - Source vertices for a Personalized Page Rank 
+	    --(一组源顶点,个人理解为某个大型网站的首页,或者某个主题,如体育)
+
+
+

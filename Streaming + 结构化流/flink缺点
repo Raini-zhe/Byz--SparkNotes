@@ -1,0 +1,86 @@
+一个完全基于内存的分布式数据库(同步或异步写到磁盘)：SnappyData，其是一个行、列混和的内存分布式数据库，内部由GemFire(12306的商业版)+Spark SQL(支持列存可压缩)实现，既支持OLTP，也支持复杂的OLAP请求，且效率很高。
+
+
+1、流处理，flink或storm + KV存储的架构，不太能适合需求的变化，即一个job对应一个特定的需求；
+2、流处理，当展示维度非常多，即keyBy的数量很多时，用flink实现比较困难；
+3、流处理，如果需要union大量的历史数据时，flink中的数据初始化时间过长，且当流+表的数据过大时，实现也比较困难。
+
+
+实时的OLTP+OLAP的HTAP场景的数据处理，优先保证低延迟的OLAP查询。说到这里，很容易让人想到Google的F1、Spanner，开源领域的代表TiDB。TiDB是个分布式的MySQL，对OLTP的支持很好，其有一个子项目叫做TiSpark，依赖Spark与TiKV做些OLAP的请求，但是这些复杂SQL执行的优先级(DistSQL API)是低于OLTP请求的，且当数据量大时(上亿条+多表join)，这些SQL执行的时间不是很理想。
+
+
+
+
+    Snappydata扩展了Spark Streaming，可以创建stream table，批量更新数据，以支持复杂的、多维度的、关联大量的历史数据的实时OLAP查询。
+    当然，数据的实时注入不一定非要用Spark Streaming完成，因为很多时候我们要对流数据做些预处理，简单的比如ETL，或者过滤甚至状态维护等，用storm或者flink来完成预处理的工作是不错的选择。且表的设计不一定要stream table，普通的列表也可以。
+    这样做的数据也是实时的，且用SnappyData在列表上进行的OLAP查询(多维度、涉及历史数据、复杂的)，直接可以用SQL既可以满足多种不同的需求了。
+
+    某种程度上讲，用SD做流处理，又多了一种选择，它适合的需求是那种需求变化多、实时性强、需要关联历史数据做聚合、查询或聚合维度较多等复杂度较高的SQL，例如下面的一个OLAP SQL的事例：
+
+		SELECT DISTINCT end_minute_timestamp AS minute_timestamp,  
+				count(order_id) over(order by end_minute_timestamp) AS order_cnt_day,   /// 全天的订单ID
+				count(order_id) over(PARTITION BY end_minute_timestamp) AS order_cnt_minute   /// 分钟内的订单ID
+		FROM  
+		  (SELECT cast(pay_time / 1000 / 60 + 1 AS int) * 60 AS end_minute_timestamp,    ///以分钟为粒度的时间戳
+			  order_id  
+		   FROM order_table  
+		   WHERE order_status = XXX  
+		     AND pay_date = year(CURRENT_DATE)*10000 + month(CURRENT_DATE)*100 + day(CURRENT_DATE) )   ///当天
+		ORDER BY 1;  
+
+	 上面的SQL逻辑为：统计当天每分钟的分钟订单量以及全天累计订单量。
+
+    上述的SQL用Flink SQL也可以实现，如果用Flink DataStream实现的话，就要设置一个1分钟的tumbling event time window，window内汇总订单量，且维护一个ValueState，保存累计订单值。
+    如果用Flink程序实现，那么你需要写一个DataStream程序，或者Flink SQL程序，复杂度都高于纯SQL，最关键的还是那个job写完后不太能适应需求的变化。
+    假如你需要看每个城市、每个地区、每个商圈、每个组织、每个用户维度的量呢？那么你的key的数量会很多的，且不能适应某两个的维度组合的数据查看。
+    用druid或opentsdb，那么你的维度不能太多，且数据没法变更。
+
+
+
+
+
+
+
+
+
+流处理框架倒是可以支持流数据的处理，但是如果要关联大量的历史数据进行处理，显然效率也是较低的，且支持复杂的查询也比较困难。
+
+    那么为了支持这种混合负载的业务，通常公司都会进行大量的工作，既费时也费力，且效率较低。这些异构的系统虽然可以实现不同的需求，但是却有以下一些缺点：
+
+	1、复杂度和总成本增加：需要引入Hive、Spark、Flink、KV，Kylin、Druid等，且要求开发人员具备这些能力并进行运维。  
+	2、性能低下：一份数据要在不同的系统中存储和转换，例如RDBMS中一套、Hive中一套、Druid中一套，数据还得经过Spark、Flink转换处理。  
+	3、浪费资源：依赖的系统越多，使用的资源也就越多，这个是显而易见的。  
+	4、一致性的挑战：分布式系统事务的一致性实现困难，且当流处理失败时，虽然检查点可恢复但是有可能重复写入外部存储中(sink的exatcly-once没法保证)。  
+
+    因此，我们目标就是在单一的集群中同时提供流式注入、事务型处理以及分析型处理。在其他类似的解决方案相比，它具有更好的性能、更低的复杂度和更少的资源。当然也是很有挑战的，例如列存适合分析，行存则适合事务更新，而流式则适合增量处理；同时对于不同场景，其HA的期望值也不同。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

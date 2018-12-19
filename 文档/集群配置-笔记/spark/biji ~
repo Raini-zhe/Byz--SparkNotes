@@ -1,0 +1,55 @@
+
+raini@biyuzhe:~/spark1$ bin/spark-shell 
+
+scala> val lines = sc.textFile("/home/raini/spark1/README.md")
+
+scala> lines.count()
+
+scala> lines.first()
+
+scala> val plines = lines.filter(line => line.contains("scala"))
+
+scala> plines.first()
+
+scala> val words = lines.flatMap(_.split(" "))
+
+scala> val counts = words.map(x => (x,1)).reduceByKey(_+_) 
+
+      counts.textAsFile(outputFile)
+
+scala> counts.take(9).foreach(println)
+scala> counts.collect() //不介意
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

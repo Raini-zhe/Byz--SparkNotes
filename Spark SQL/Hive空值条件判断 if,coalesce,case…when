@@ -1,0 +1,185 @@
+
+
+
+
+
+
+
+
+hive中可能会遇到根据判断不同值，产生对应结果的场景，有三种实现方式：
+
+	(1) IF( Test Condition, True Value, False Value )
+
+	(2) COALESCE( value1,value2,… )
+
+	(3) CASE Statement
+
+
+
+
+#--------------------------------------------------- ( CASE Statement
+	该语法可以与某字段多个比较值的判断，并分别产生不同结果，与其他语言中case语法相似，例如：
+
+		    select pd,
+		    case pst
+			when "常年" then 1 
+			when "非常年" then 0
+			else 0
+		    end
+		    as pt
+		    from dgp limit 100;
+
+		或：
+
+		    select pd,
+		    case
+			when pst＝"常年" then 1 
+			when pst＝"非常年" then 0
+			else 0
+		    end
+		    as pt
+		    from dgp limit 100;
+
+
+	同样的，我们也可以用这个方法来判断工资的等级，并统计每一等级的人数。SQL代码如下； 
+		SELECT
+		CASE WHEN salary <= 500 THEN '1'
+		WHEN salary > 500 AND salary <= 600  THEN '2'
+		WHEN salary > 600 AND salary <= 800  THEN '3'
+		WHEN salary > 800 AND salary <= 1000 THEN '4'
+		ELSE NULL END salary_class,
+		COUNT(*)
+		FROM    Table_A
+		GROUP BY
+		CASE WHEN salary <= 500 THEN '1'
+		WHEN salary > 500 AND salary <= 600  THEN '2'
+		WHEN salary > 600 AND salary <= 800  THEN '3'
+		WHEN salary > 800 AND salary <= 1000 THEN '4'
+		ELSE NULL END;
+
+
+
+#--------------------------------------------------- IF( Test Condition, True Value, False Value )
+	该语法只能用来判断单个条件，例如：:
+		scala> spark.sql(
+		     |   """
+		     |     |    select phone1,
+		     |     |    if(phone1='常年',1,0) as pt,
+		     |     |    phone2
+		     |     |    from eversecphone.cdr limit 5
+		     |   """.stripMargin) show
+
+		+-----------+---+-----------+
+		|     phone1| pt|     phone2|
+		+-----------+---+-----------+
+		|18610643475|  0|18516836156|
+		|13141394289|  0|18635917248|
+		|15510762298|  0|13146378568|
+		|15652862386|  0|15118926666|
+		|13120079870|  0|18612036999|
+		+-----------+---+-----------+
+
+
+
+#----------------0------------------------------------------------------------ (COALESCE
+
+COALESCE 解决 NULL和数字相加的问题
+	如果有用到sum函数，但是发现sum的列中有NULL值，可以使用以下方法转换成0值：COALESCE(f, cast(0 AS bigint))，coalesce方法会返回列表中第一个不为NULL的字段，相当于如果第一个字段是NULL，就第二个字段。
+
+#----------------0------------------------------------------------------------- 
+
+
+
+	spark.sql(
+	  """
+	    |    select phone1,
+	    |    if(phone1_city='NULL',10001,10002) as pt,
+	    |    COALESCE(phone1_province,10001,2002) as pro,
+	    |    phone2
+	    |    from eversecphone.cdr_big
+	  """.stripMargin).where("phone1=17732783765") show(100) // limit 5
+
+	+-----------+-----+----+-----------+                                            
+	|     phone1|   pt| pro|     phone2|
+	+-----------+-----+----+-----------+  <----------------(空值! 不是后来填充的字符串'NULL', 是原本的表字段就没有值的
+	|17732783765|10001|NULL|18618256148|  <----------------(所以,没生效
+	|17732783765|10001|NULL|15652562993|
+	|17732783765|10001|NULL|18618256148|
+	|17732783765|10001|NULL|18566071309|
+	|17732783765|10001|NULL|18566071309|
+	+-----------+-----+----+-----------+
+
+
+
+#--------------------------------------------------- (COALESCE示例) 以emp表为例：
+
+	desc emp;
+
+		empno                   int                     None                
+		ename                   string                  None                
+		job                     string                  None                
+		mgr                     int                     None                
+		hiredate                string                  None                
+		sal                     double                  None                
+		comm                    double                  None                
+		deptno                  int                     None          
+
+
+	select * from emp;
+
+		7369    SMITH   CLERK   7902    1980-12-17      800.0   NULL    20
+		7499    ALLEN   SALESMAN        7698    1981-2-20       1600.0  300.0   30
+		7521    WARD    SALESMAN        7698    1981-2-22       1250.0  500.0   30
+		7566    JONES   MANAGER 7839    1981-4-2        2975.0  NULL    20
+		7654    MARTIN  SALESMAN        7698    1981-9-28       1250.0  1400.0  30
+		7698    BLAKE   MANAGER 7839    1981-5-1        2850.0  NULL    30
+		7782    CLARK   MANAGER 7839    1981-6-9        2450.0  NULL    10
+		7788    SCOTT   ANALYST 7566    1987-4-19       3000.0  NULL    20
+		7839    KING    PRESIDENT       NULL    1981-11-17      5000.0  NULL    10
+		7844    TURNER  SALESMAN        7698    1981-9-8        1500.0  0.0     30
+		7876    ADAMS   CLERK   7788    1987-5-23       1100.0  NULL    20
+		7900    JAMES   CLERK   7698    1981-12-3       950.0   NULL    30
+		7902    FORD    ANALYST 7566    1981-12-3       3000.0  NULL    20
+		7934    MILLER  CLERK   7782    1982-1-23       1300.0  NULL    10
+											<-------  comm字段有空值（NULL）
+
+	select empno,ename,job,mgr,hiredate,sal, COALESCE(comm, 0),deptno from emp;
+
+		7369    SMITH   CLERK   7902    1980-12-17      800.0   0.0     20
+		7499    ALLEN   SALESMAN        7698    1981-2-20       1600.0  300.0   30
+		7521    WARD    SALESMAN        7698    1981-2-22       1250.0  500.0   30
+		7566    JONES   MANAGER 7839    1981-4-2        2975.0  0.0     20
+		7654    MARTIN  SALESMAN        7698    1981-9-28       1250.0  1400.0  30
+		7698    BLAKE   MANAGER 7839    1981-5-1        2850.0  0.0     30
+		7782    CLARK   MANAGER 7839    1981-6-9        2450.0  0.0     10
+		7788    SCOTT   ANALYST 7566    1987-4-19       3000.0  0.0     20
+		7839    KING    PRESIDENT       NULL    1981-11-17      5000.0  0.0     10
+		7844    TURNER  SALESMAN        7698    1981-9-8        1500.0  0.0     30
+		7876    ADAMS   CLERK   7788    1987-5-23       1100.0  0.0     20
+		7900    JAMES   CLERK   7698    1981-12-3       950.0   0.0     30
+		7902    FORD    ANALYST 7566    1981-12-3       3000.0  0.0     20
+		7934    MILLER  CLERK   7782    1982-1-23       1300.0  0.0     10
+
+	注意观察comm字段的值。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

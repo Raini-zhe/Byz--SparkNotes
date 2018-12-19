@@ -1,0 +1,128 @@
+
+
+窗口函数  F.rowNumber().over(Window.partitionBy("c").orderBy("s")).alias("rowNum") 
+
+	from pyspark.sql import Row, functions as F
+	from pyspark.sql.window import Window
+	from pyspark import SparkContext
+	sc = SparkContext("local[3]", "test data frame on 2.0")
+	testDF = sc.parallelize( (Row(c="class1", s=50), Row(c="class2", s=40), Row(c="class3", s=70), Row(c="class2", s=49), Row(c="class3", s=29), Row(c="class1", s=78) )).toDF()
+	(testDF.select("c", "s", F.rowNumber().over(Window.partitionBy("c").orderBy("s")).alias("rowNum") ).show())
+
+
+空值查询:
+
+	scala> data1.filter("gender is null").select("gender").limit(10).show
+	+------+
+	|gender|
+	+------+
+	| null|
+	| null|
+	| null|
+	| null|
+	| null|
+	+------+
+
+
+	scala> data1.filter("gender is not null").select("gender").limit(10).show
+	+------+
+	|gender|
+	+------+
+	| male|
+	|female|
+	| male|
+	|female|
+	| male|
+	| male|
+	| male|
+	| male|
+	|female|
+	|female|
+	+------+
+
+
+	scala> data1.filter( data1("gender").isNull ).select("gender").limit(10).show
+	+------+
+	|gender|
+	+------+
+	| null|
+	| null|
+	| null|
+	| null|
+	| null|
+	+------+
+
+
+	scala> data1.filter("gender<>''").select("gender").limit(10).show
+	+------+
+	|gender|
+	+------+
+	| male|
+	|female|
+	| male|
+	|female|
+	| male|
+	| male|
+	| male|
+	| male|
+	|female|
+	|female|
+	+------+
+
+
+
+算子示例:
+
+表结构及内容：
+
+		+-------+---+
+		|   name|age|
+		+-------+---+
+		|Michael| 29|
+		|   Andy| 30|
+		| Justin| 19|
+		| Justin| 20|
+		|      LI| 20|
+		+-------+---+
+
+字段合并算子concat_ws:
+	select concat_ws(',',collect_set(name)) as names from people group by age
+		+---------+---+
+		|   names|age|
+		+---------+---+
+		|LI,Justin| 20|
+		|   Justin| 19|
+		|  Michael| 29|
+		    Andy| 30|
+		+---------+---+
+
+分组聚合加集合组合算子:
+	parquetFile.groupBy("age")
+		   .agg(collect_set("name"))
+
+		+---+-----------------+
+		|age|collect_set(name)|
+		+---+-----------------+
+		| 20|    [LI, Justin]|
+		| 19|      [Justin]|
+		| 29|     [Michael]|
+		| 30|        [Andy]|
+		+---+-----------------+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

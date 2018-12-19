@@ -1,0 +1,58 @@
+
+使用 plt.savefig() 保存图片==========================
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+x = np.arange(0, 5, 0.1);
+y = np.sin(x)
+plt.plot(x, y)
+plt.savefig(‘sin.png‘)
+
+====================================================
+
+使用Python的Matplotlib的时候,很多任务是批处理的,中间需要画图,并保存图像,可是不希望每次都把图形显示出来,
+
+可以试一下下面的脚本testplot.py:
+
+    import numpy as np  
+      
+    import matplotlib  
+    matplotlib.use('Agg')  
+      
+    from matplotlib.pyplot import plot,savefig  
+      
+    x=np.linspace(-4,4,30)  
+    y=np.sin(x);  
+      
+    plot(x,y,'--*b')      
+    savefig('D:/MyFig.jpg')  
+
+运行一下,发现没有,图形并没有在屏幕上显示,但是已保存到文件,关键是要设置'Agg'的属性!
+
+========================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,27 @@
+
+从Spark的角度来看value只是一个字节序列。它不了解序列化格式或内容。为了能够提取文件，你必须先解析它。
+
+如果数据被序列化为JSON字符串，则有两个选项。您可以cast value到StringType和使用from_json，并提供一个架构：
+
+    import org.apache.spark.sql.types._
+    import org.apache.spark.sql.functions.from_json
+
+    val schema: StructType = StructType(Seq(
+      StructField("column1", ???),
+      StructField("column2", ???)
+    ))
+
+    rawKafkaDF.select(from_json($"value".cast(StringType), schema))
+
+
+或cast向StringType，提取由使用路径字段get_json_object：
+
+    import org.apache.spark.sql.functions.get_json_object
+
+    val columns: Seq[String] = ???
+
+    val exprs = columns.map(c => get_json_object($"value", s"$$.$c"))
+
+    rawKafkaDF.select(exprs: _*)
+    
+然后cast到期望的类型。

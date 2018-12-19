@@ -1,0 +1,49 @@
+
+参看yuntu_online代码
+
+====================================================================================
+
+package com.yuntu.online.stream.bean
+import com.fasterxml.jackson.annotation.JsonProperty
+
+case class Event (
+  /**
+    * 渠道
+    */
+  var channel:String,
+    。。。
+  var version:String,
+
+  @JsonProperty("data") var body:EventBody  <-------------------------------------------------------------------1.包含多个字段
+){
+
+}
+
+====================================================================================
+
+package com.yuntu.online.stream.bean
+import com.fasterxml.jackson.annotation.JsonProperty
+
+@JsonProperty("data")                       <-------------------------------------------------------------------2
+case class EventBody (
+  var `type`:String,
+  var subtype:String,
+  ...
+  var isp:String,
+  var rid:String,
+  var bps:String
+)
+
+====================================================================================
+
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.scala.DefaultScalaModule
+
+    val mapper = new ObjectMapper() //Json转换器
+    mapper.registerModule(DefaultScalaModule)
+    
+    dataFrame.map { line =>
+      mapper.readValue(line, classOf[Event])<-------------------------------------------------------------------3.在这使用
+    }.toDF().createOrReplaceTempView("streamEvent")
+
+

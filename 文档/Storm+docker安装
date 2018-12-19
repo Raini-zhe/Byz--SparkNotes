@@ -1,0 +1,84 @@
+
+Storm本地模式
+使用 Storm 的官方镜像及其简单，对于普通的本地模式，无需安装配置，直接就可以运行 Storm 程序。
+Storm 下的 examples/storm-starter目录，是一个示例项目，其中就有打好的jar包，在这个目录下执行下面的命令运行这个示例程序：
+sudo docker run -it -v storm-starter-topologies-1.1.0.jar:/topology.jar storm:1.1.0 storm jar /topology.jar org.apache.storm.starter.ExclamationTopology
+
+含义：使用 storm:1.1.0这个镜像运行一个storm环境，并执行 storm-starter-topologies-1.1.0.jar 中的 org.apache.storm.starter.ExclamationTopology
+
+
+
+最小化集群搭建
+本地模式已经可以满足学习需求，如果想更加真实一些，可以搭建一个简单的集群环境。
+
+Storm 是依赖 ZooKeeper 的，使用需要先安装 ZooKeeper，也同样使用 Docker 镜像，非常方便，执行命令：
+
+docker run -d --restart always --name my-zookeeper zookeeper:3.4
+
+Storm 主要分为两种组件：Nimbus、Supervisor，分别安装。
+
+
+
+安装并启动 Nimbus ：
+
+sudo docker run -d --restart always --name my-nimbus --link my-zookeeper:zookeeper storm:1.1.0 storm nimbus
+运行 storm:1.0.2 容器，并连接 zookeeper 容器，容器启动后执行命令 storm nimbus
+
+
+
+安装并启动 Supervisor ：
+
+sudo docker run -d --restart always --name my-supervisor --link my-zookeeper:zookeeper --link my-nimbus:nimbus storm:1.1.0 storm supervisor
+和上一个命令一样，只是变成执行 storm supervisor
+
+
+
+一个精简的集群环境就搭建完成了，在集群中运行一个示例程序测试一下，examples/storm-starter目录下执行：
+
+sudo docker run --link my-nimbus:nimbus -it --rm -v storm-starter-topologies-1.1.0.jar:/topology.jar storm:1.1.0 storm jar /topology.jar org.apache.storm.starter.WordCountTopology topology
+
+
+
+
+Storm 1.1.0版本单节点部署===============================================
+一、storm单节点部署
+1、安装介质准备http://storm.apache.org/downloads.html
+2、使用tar -zxvf apache-storm-1.1.0.tar.gz完全解压后的文件目录。
+3、修改配置文件vim storm.yaml
+ ########### These MUST be filled in for a storm configuration
+ storm.zookeeper.servers:
+     - "192.168.190.130"
+#     - "server2"
+# 
+ nimbus.seeds: ["192.168.190.130"]
+# 
+# 
+# ##### These may optionally be filled in:
+#    
+## List of custom serializations
+# topology.kryo.register:
+#     - org.mycompany.MyType
+#     - org.mycompany.MyType2: org.mycompany.MyType2Serializer
+#
+## List of custom kryo decorators
+# topology.kryo.decorators:
+#     - org.mycompany.MyDecorator
+#
+## Locations of the drpc servers
+ drpc.servers:
+     - "192.168.190.130"
+#     - "server2"
+
+4、启动storm服务，之前已完成zookeeper的部署并确保zookeeper服务已启动，zkServer.sh start
+     1)、启动nimbus
+            ./storm nimbus & 
+
+      2)、启动ui界面 
+           ./storm ui & 
+
+     3)、启动supervisor 
+         ./storm supervisor &
+
+
+
+

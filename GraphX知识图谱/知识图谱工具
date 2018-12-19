@@ -1,0 +1,14 @@
+知识图谱工具
+Gaffer+Accumulo/Hbase/parquet + GraphX、GraphFrames，Sparkling-graph
+
+Neo4J、Cassovary(一个简单的JVM"大图"处理库-3年没更新了)，GraphJet（是一个实时图形处理库-项目太小维护少），Gremlin-Scala，Gradoop(Flink)，Gephi，shc，TinkerPop(事务)+JanusGraph+Hbase
+
+
+
+算法：
+    基础图论算法（最短路径、中介中间性等），Node2Vector，图形聚类、谱聚类方法、模块度划分方法
+    社区检测（DBScan、lovain、GN、），Closeness/Eigenvector/Degree/Betweenness Centrality、Common Neighbours
+    结构洞检测算法HIT，Ncut，Rank Gap，Louvain，GN，MLC，知识图谱
+    超谱图聚类（构建相似度矩阵，LSH计算相似度构建超图，Spark Kmeas聚类）
+
+

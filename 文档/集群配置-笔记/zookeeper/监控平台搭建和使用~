@@ -1,0 +1,75 @@
+
+推荐两个工具（windows）：
+	1.netflix:exhibitor 协助我们配置zookeeper,自由浏览和修改节点数据，查看运行状态信息，必要时自动手动重启
+	2.zabbix  对zookeeper服务器cpu负载 内存磁盘使用 网络状况等指标做监控
+
+
+exhibitor：
+	github.com/Netflix/exhibitor 下载zip源代码
+
+	解压
+
+	进..-standalone>...>buildscripts> java -jar
+	 1法：进..-standalone>...>buildscripts>standalone> 构建java包
+	 2法：进..-standalone>...>buildscripts>war> 构建war包
+
+	>standalone下>maven方式构建> maven clean package (命令执行完就能得到一个jar包)
+
+
+linux下操作了：
+	>将jar包上传到zoo服务器某目录下(执行)>
+		# java -jar exihibitor-1.5.5.jar -c file
+
+	>浏览器打开
+		biyuzhe:8080/exihibitor/v1/ui/index.html
+
+	config标签：
+		可以制作一份集群中所有机器都共享的配置
+		首先打开Editing 
+
+		Servers: 
+			(这个配置的节点都要运行jar包)
+			S:1:192.168.1.36,S:2:192.168.1.37,S:3:192.168.1.38 (S标准服务器类型 Id ip)
+		
+		Additional Config:
+			填基础配置
+			tickTime=2000
+			initLimit=5
+			syncLimit=2
+
+		Ports:
+			client:2181
+			connect:2888
+			election:3888
+
+	Commit提交修改
+
+	Control Panel 标签：
+		可重启 执行4字命令
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,68 @@
+
+就是远程嘛。。。讲解如何通过 JMX 方式来进行 ZooKeeper 运维。
+
+在运维中使用JMX有两大步骤：
+
+	1.修改zoo启动服务器的脚本
+
+	 打开zkServer.sh 找到这一行 ：
+	 	ZOOMAIN="-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.local.only=$JMXLOCALONLY org.apache.zookeeper.server.quorum.QuorumPeerMain" 
+
+		将-Dcom.sun.management.jmxremote.local.only=$JMXLOCALONLY 设为false
+	在之后加上参数：
+	    -Djava.rmi.server.hostname=192.168.  //用于规定我们使用JConsole 连接到zookeeper时需要填写服务器的名称
+	    -Dcom.sun.management.jmxremote.port=8899 
+	    -Dcom.sun.management.jmxremote.authenticate=false  //是否启用权限验证
+	    -Dcom.sun.management.jmxremote.ssl=false      //是否启用ssl
+
+	重新启动服务器...（如果启用里多台服务器，都要改脚本）
+
+	
+	2.使用JConsole来管理
+
+
+先安装jdk
+
+切换到jdk/bin目录下 > 看到 Jconsole.exe 运行它
+
+选择远程进程，
+	输入需要连接的zoo服务器的（ ip地址：端口号8899 ) 8899是在zoo启动脚本里配置的
+	
+连接。。。
+
+
+看MBean目录：
+	的org.apache.ZooKeeperService目录：
+		ReplicateServer_id1...1表示链接上了第一台服务器：
+			+ replica.1  
+			+ replica.2   
+			+ replica.3     123表示zoo集群中的三个服务节点,依次展开...可以看到属性信息
+
+				+属性
+
+				+Follower:  表示这台服务器当前角色是follower
+					+属性： 可以进一步看到服务器运行时信息（AvgRequestLatency延时，连接端口，PacketsSent发出数据包的个数..）
+
+					+操作:  点击就触发了（resetLatency:重置所有与客户端处理请求延时相关的东西
+						resetMaxLatency:重置客户端请求处理的最大延时统计
+						reaetStatistics:重置所有客户端请求处理延时的信息以及所有客户端发送包的发送与接收量的统计） 
+
+					+InMemoryDataTree: 代表当前zoo服务器的内存数据库
+
+						+属性：(LastZxid:最后处理的事务Id
+							NodeCount:数据节点的个数
+							WatchCount:watch个数)
+
+						+操作：(countEphemerals:统计临时节点的总个数
+							approximateDataSize:统计内存数据库所有节点的数据总量)
+
+
+
+
+
+
+
+
+
+
+

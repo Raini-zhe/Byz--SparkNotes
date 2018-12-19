@@ -1,0 +1,13 @@
+（只支持Spark-2.1.0版本）
+
+https://github.com/Intel-bigdata/OAP
+
+
+git 项目源码 --> 进到项目目录 --> mvn -DskipTests package --> 在target/找到oap-<version>.jar
+
+
+对比：OAP与Parquet具有相同的压缩率
+官例：表oap_reference数据大小：318 GB | 表parquet_reference数据大小：317 GB
+
+
+性能比较：指数加速，与Parquet矢量化读取相比，使用索引的OAP具有10倍的改进

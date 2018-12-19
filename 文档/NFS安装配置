@@ -1,0 +1,167 @@
+
+hadoop-2.7.2版本下：
+
+
+raini@biyuzhe:~/app$ sudo apt-get install nfs-kernel-server （先安装NFS）
+
+
+raini@biyuzhe:~/app$ sudo mkdir /mnt/hdfs 建立一个nfs服务的专有的文件夹;
+
+
+sudo gedit /etc/exports
+在最后一行加入： /mnt/hdfs *(rw,sync,no_root_squash,no_subtree_check)
+
+/mnt/hdfs：要共享的目录
+* ：允许所有的网段访问
+rw ：读写权限
+sync：资料同步写入内在和硬盘
+no_root_squash：nfs客户端共享目录使用者权限
+no_subtree_check：不检查父目录的权限。
+
+
+
+在 core-site.xml 添加
+<property>
+   <name>hadoop.proxyuser.root.groups</name>
+   <value>*</value>
+   <description>允许所有用户组用户代理</description>
+</property>
+
+<property>
+   <name>hadoop.proxyuser.root.hosts</name>
+   <value>localhost</value>
+   <description>允许挂载的主机域名</description>
+</property>
+说明: name 标签中的 root 是用户名称,这是表示可以超级用户访问。 *表示所有的用户组,有时还需要创建超级用户组,否则会用警告提示。
+
+命令:groupadd supergroup
+
+<property>
+   <name>nfs.dump.dir</name>
+   <value>/home/raini/hdfs</value>
+</property>
+
+<property>
+   <name>nfs.rtmax</name>
+   <value>1048576</value>
+   <description>This is the maximum size in bytes of a READ request supported by the NFS gateway. If you change this, make sure you also update the nfs mount's rsize(add rsize= # of bytes to the mount directive).</description>
+</property>
+
+<property>
+   <name>nfs.wtmax</name>
+   <value>65536</value>
+   <description>This is the maximum size in bytes of a WRITE request supported by the NFS gateway. If you change this, make sure you also update the nfs mount's wsize(add wsize= # of bytes to the mount directive).</description>
+</property>
+
+<property>
+   <name>nfs.exports.allowed.hosts</name>
+   <value>* rw</value>
+   <description>允许所有主机对文件有 rw 权限</description>
+</property>
+
+
+
+第三步:启动相关操作
+前提:在配置了环境变量下,(没有配置环境变量,进入 Hadoop 主目录/bin 下启动), Hadoop可以已格式化后正常启动。
+若在启动时想看到相关的启动详细信息,在 hadoop 主目录/etc/Hadoop/log4j.property 中添加如下信息:
+
+log4j.logger.org.apache.hadoop.hdfs.nfs=DEBUG
+log4j.logger.org.apache.hadoop.oncrpc=DEBUG
+
+
+启动 Hadoop:start-all.sh
+
+执行命令：sudo /etc/init.d/rpcbind restart 重启rpcbind 服务。nfs是一个RPC程序，使用它前，需要映射好端口，通过rpcbind 设定。
+执行命令：sudo /etc/init.d/nfs-kernel-server restart 重启nfs服务。
+
+
+sudo service portmap stop (先停止，再启动)
+sudo hdfs portmap 2>~/portmap.err &
+sudo -u hdfs hdfs nfs3 2>~/nfs3.err &
+
+screen -r nfs
+
+raini@biyuzhe:~$ rpcinfo -p biyuzhe
+
+raini@biyuzhe:~$ showmount -e biyuzhe （看到我们的目录说明成功）
+Export list for biyuzhe:
+/ *
+
+raini@biyuzhe:~/app$ service portmap stop（start启动会占用nfs3的端口 所以关掉）
+raini@biyuzhe:~/hadoop$ sudo ./bin/hdfs nfs3 start &    -----------------(在监听状态mount才会成功)
+
+raini@biyuzhe:~/hadoop$ sudo mount -t nfs -o vers=3,proto=tcp,nolock localhost:/ /home/raini/hdfs （localhost是core-site.xml中配置的）
+raini@biyuzhe:~/hadoop$ sudo mount -t nfs -o vers=3,proto=tcp,nolock $HOSTNAME:/ /mnt/hdfs
+
+
+raini@biyuzhe:~/hadoop$ mkdir /mnt/hdfs/tnp
+raini@biyuzhe:~/hadoop$ hdfs dfs -ls /
+Found 4 items
+drwxrwxr-x   - raini supergroup          0 2016-04-24 10:30 /tmp
+drwxrwxr-x   - raini raini               0 2016-04-24 15:32 /tnp
+drwxrwxrwx   - raini supergroup          0 2016-04-23 19:21 /user
+
+
+-------（可以看到在本地新建目录，hdfs中也出现了相同目录）
+
+
+
+
+
+
+
+
+
+
+
+
+raini@biyuzhe:~/hadoop$ rpcinfo -p biyuzhe
+   program vers proto   port  service
+    100000    4   tcp    111  portmapper
+    100000    3   tcp    111  portmapper
+    100000    2   tcp    111  portmapper
+    100000    4   udp    111  portmapper
+    100000    3   udp    111  portmapper
+    100000    2   udp    111  portmapper
+    100005    1   udp  43223  mountd
+    100005    1   tcp  35995  mountd
+    100003    2   tcp   2049  nfs
+    100003    3   tcp   2049  nfs
+    100003    4   tcp   2049  nfs
+    100227    2   tcp   2049
+    100227    3   tcp   2049
+    100003    2   udp   2049  nfs
+    100003    3   udp   2049  nfs
+    100003    4   udp   2049  nfs
+    100227    2   udp   2049
+    100227    3   udp   2049
+    100021    1   udp  37715  nlockmgr
+    100021    3   udp  37715  nlockmgr
+    100021    4   udp  37715  nlockmgr
+    100021    1   tcp  33069  nlockmgr
+    100021    3   tcp  33069  nlockmgr
+    100021    4   tcp  33069  nlockmgr
+raini@biyuzhe:~/hadoop$ showmount -e biyuzhe
+rpc mount export: RPC: Unable to receive; errno = Connection refused
+raini@biyuzhe:~/hadoop$ sudo service portmap stop
+Warning: Stopping portmap.service, but it can still be activated by:
+  rpcbind.socket
+raini@biyuzhe:~/hadoop$ sudo hdfs portmap 2>~/portmap.err &
+[3] 16901
+raini@biyuzhe:~/hadoop$ sudo -u hdfs hdfs nfs3 2>~/nfs3.err &
+[4] 16902
+[3]   退出 1                sudo hdfs portmap 2> ~/portmap.err
+raini@biyuzhe:~/hadoop$ service portmap start
+[4]+  退出 1                sudo -u hdfs hdfs nfs3 2> ~/nfs3.err
+raini@biyuzhe:~/hadoop$ ./bin/hdfs nfs3 start
+
+
+
+
+
+
+
+
+
+
+

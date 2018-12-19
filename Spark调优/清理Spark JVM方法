@@ -1,0 +1,9 @@
+清理Spark JVM方法：
+
+
+这确保了Spark的所有内存构件都被清除。
+
+ scala>  testDF.unpersist()
+ scala>  System.gc()
+ scala>  System.runFinalization()
+

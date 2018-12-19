@@ -1,0 +1,46 @@
+注册方法:   注册码可以沿用14的,只是在 注册时选择 License server ，填 http://idea.lanyus.com ，然后点击 OK
+
+Debug 
+1. 支持 Lambda 表达式 Debug ，之前版本只能使用推倒 
+2. Debug 时可强制方法 /表达式返回值
+
+用户界面 
+1. 测试 UI 提升，增加大量统计功能 
+2. “Find in Path”功能增加行内代码搜索 
+3. Run 的时候会出现小绿条，提示当前运行配置 
+4. 增加对色弱 /色盲的配色支持 
+5. 支持一键运行 /测试
+
+编辑器 
+1. on-the-fly 冗余代码检测 
+2. 表达式、返回值类型推断 
+3. 可直接 encode 特殊的 HTML 字符，如 > 会转换成 >
+
+语言 
+1. Kotlin 支持 
+2. Groovy 支持 2.3 版本中的 @Builder 注解 
+3. Scala 支持增强
+
+框架 
+1. 支持 Spring 4.2 特性 
+2. Spring Boot 支援更好，如 application.yml 、 initializer 提示与配置 
+3. Grails 支持 3.X 版本 
+4. Arquilian <- 我不懂是啥 
+5. Android 增加 Android Studio 1.3 的新特性
+
+构建工具 
+1. Gradle/SBT <- 引入时选择特定 modules
+
+前端（不太懂） 
+1. TypeScript 
+2. React 
+3. AngularJS
+
+版本控制 
+1. 可直接在 Commit dialog 窗口中修改代码 
+2. 支持 Rebase 功能 
+3. 分支操作 
+4. Perforce 中的 Shelve （没用过）、 TFS 、 MQ 增强
+
+数据库工具 
+支持修改 Table 、多个查询窗口（终于支持了…）、执行计划（终于支持了…）等等等等

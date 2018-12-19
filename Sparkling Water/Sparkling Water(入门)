@@ -1,0 +1,58 @@
+
+
+
+创建上下文:
+
+	import org.apache.spark.h2o._
+	val hc = H2OContext.getOrCreate(spark)
+
+
+
+创建 H2OFrame 从 Spark DataFrame:
+
+	val df = sc.parallelize(1 to 1000).toDF
+	val hf = hc.asH2OFrame(df)
+
+创建 Spark DataFrame 从 H2OFrame:
+
+	val df = hc.asDataFrame(hf)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#

@@ -1,0 +1,10 @@
+
+http://scalikejdbc.org/
+
+ScalikeJDBC是Scala开发人员基于SQL的简洁数据库访问库。该库自然包装JDBC API，为您提供易于使用且非常灵活的API。更重要的是，QueryDSL使您的代码类型安全且可重用。
+
+ScalikeJDBC是一个实用且适合生产的产品。将此库用于实际项目。
+
+
+
+

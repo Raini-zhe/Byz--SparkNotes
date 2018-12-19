@@ -1,0 +1,30 @@
+1 前提：已经安装了pycharm和spark
+
+2 在pycharm上的project interpreter上下载py4j，将python转java的模块。
+
+4 随便run一个py文件，pycharm右上角“run”三角形的左边有一个run configurition，打开它。
+
+5 设置configurition---Environment--- Environment variables ---点击“...”，出现框框，点击+，输入：
+SPARK_HOME /home/raini/app/spark
+PYTHONPATH /home/raini/app/spark/python
+（注意不管是路径的哪里，都不能有空格！）
+
+6 关键的一步，在Setting中的project structure中点击右边的“add  content root”，添加py4j-some-version.zip和pyspark.zip的路径（这两个文件都在Spark中的python文件夹下）
+
+7 完成，from pyspark import SparkContext，红线消失，运行正常。
+
+
+-----------
+
+8 在jupyter上运行conda的虚拟环境:
+    需要在所运行的虚拟环境中安装nb_conda插件
+
+        source activate py35
+        conda install nb_conda
+    
+    然后在你指定的项目文件夹project上运行jupyter:
+        jupyter notebook project_path
+        
+    或者在jupyter notebook页面，选择change kernel，找到对应的虚拟环境py35即可
+
+

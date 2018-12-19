@@ -1,0 +1,108 @@
+
+//--------------------- --------------------- --------------------- --------------------- 
+
+1.事件-时间（Event-time）
+2.延迟数据（Late Data）
+3.处理时间：
+    import java.sql.Timestamp
+    val words = readStream.as[(String, Timestamp)] // 加入处理数据的时间
+        .flatMap(line => line._1.split(" ")
+        .map(word => TimeWord(word, line._2))).toDF()
+
+
+    val stream_detail = spark.sql(
+      s"""
+        |select CAST(from_unixtime(floor(ts/1000),'yyyy-MM-dd HH:mm:ss') as TIMESTAMP) sampling_time,
+        | channel,
+        | body.isp isp,
+        | body.rid rid,
+        | channel,
+        | term,
+        | nettype,
+        | case when body.type=1 then 1 else 0 end stream_times
+        |from streamEvent
+        |""".stripMargin)
+      .withWatermark("sampling_time","4 minutes")
+          //使用"sampling_time"作为事件发生时间(原始数据产生的时间)。并将"4 minutes"定义为允许的数据延迟的阈值,超时的就忽略了
+          // 水印，允许用户指定后期数据(数据到达Spark的时间)的阈值，并允许引擎相应地清理旧状态。
+          // 水印，使引擎能够自动跟踪数据中的当前事件时间并尝试相应地清理旧状态。您可以通过指定事件时间列以及根据事件时间预计数据的延迟时间来定义查询的水印。
+          // 换句话说，阈值内的后期数据将被聚合，但是晚于阈值的数据将开始被丢弃
+          //请注意，withWatermark在非流式数据集上使用是no-op。由于水印不应以任何方式影响任何批量查询，我们将直接忽略它。
+      .groupBy(window($"sampling_time", "1 minutes","1 minutes"),$"isp",$"rid",$"channel",$"term",$"nettype") //<-------------(这里写上需要聚合的列)
+          //使用groupBy()和window()操作来表示窗口化聚合
+      .agg(
+        sum("stream_times").as("stream_times")
+        //        count("isp").as("isp_stream_times"),
+        //        count("channel").as("channel_stream_times"),
+        //        count("term").as("term_stream_times"),
+        //        count("nettype").as("nettype_stream_times")
+      )
+      .withColumn("ctime",col("window.start"))
+      .withColumn("etime",col("window.end"))
+      .drop("window")
+      .toDF("isp","rid","channel","term","nettype","stream_times","ctime","etime")
+      .coalesce(1)
+
+
+
+//--------------------- --------------------- --------------------- --------------------- 
+水印清除聚合查询中的状态需要满足下面的条件：
+
+    a、输出模式必须是追加（Append Mode）和更新模式（Update Mode），完全模式（Complete Mode）要求所有聚合数据持久化，所以不能使用水印删除中间状态。
+
+    b、聚合必须有事件-时间列或者一个事件-时间列上的窗口。
+
+    c、withWatermark必须在相同的列上调用，如聚合中使用的时间戳列。例如，
+
+        df.withWatermark("time", "1 min").groupBy("time2").count()在Append Mode中是无效的，因为对于聚合的列水印定义在了不同的列上。
+
+    d、withWatermark必须在水印聚合被使用前调用。例如 
+
+        df.groupBy("time").count().withWatermark("time", "1 min")在Append Mode中是无效的。
+
+
+//--------------------- --------------------- --------------------- --------------------- 
+
+//--------------------- --------------------- --------------------- --------------------- 
+//--------------------- --------------------- --------------------- --------------------- 
+//--------------------- --------------------- --------------------- --------------------- 
+//--------------------- --------------------- --------------------- --------------------- 
+
+持续模式目前支持的 Dataset 操作包括 Projection、Selection 以及除 current_timestamp()、current_date()、聚合函数之外的 SQL 操作。它还支持将 Kafka 作为数据源和数据池（Sink），也支持将控制台和内存作为数据池。
+开发者可以根据实际的延迟需求来选择使用持续模式还是微批次模式，总之，Structured Streaming 为开发者提供了容错和可靠性方面的保证。
+简单地说，Spark 2.3 的持续模式所能做到的是：
+    端到端的毫秒级延迟
+    至少一次处理保证
+    支持 Dataset 的映射操作
+    流到流的连接
+
+
+
+//--------------------- --------------------- --------------------- --------------------- 
+
+两个完整的spark流处理的真实项目
+
+
+
+https://github.com/steveSK/Matching-ML/tree/c84805c12833688fc9485653c920a5f7b07559cc
+
+：云图TV，国内排名前列的手机电视直播网站，两个月前就看到在做这个项目，说明在结构流处理还是beta版本的时候就开始应用了，这些是请老外写的
+
+场景：spark接收kafka传来的参数->结构化流进行接收->机器学习算法通过参数对当前用户进行一些分类任务（计算同城相似用户分类）
+
+
+
+
+https://github.com/qxcjs/yuntu_onlie_analysis/tree/e4939732e53c87dea6bf15bb48bf57007578cc09
+
+：这是云图TV旗下的爱秀直播平台的数据处理
+
+主要用的技术就是
+	.sparkSQL(结合流处理使用)：在线人数、主播在线数、主播流数据、推流总维度等
+	.结构化流式处理: 接收kafka的数据，实时统计一分钟内的数据(主播数、粉丝数这些)，然后写入数据库
+
+
+//--------------------- --------------------- --------------------- --------------------- 
+
+//--------------------- --------------------- --------------------- --------------------- 
+

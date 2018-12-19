@@ -1,0 +1,83 @@
+# 最重要的5个 # 通常是tickTime=tickTime*initLimit  就是20000
+
+tickTime=2000
+initLimit=5
+syncLimit=2
+dataDir=/home/raini/zookeeper/dataDir 
+dataLogDir=/home/raini/zookeeper/dataLogDir  # 事务日志和快照日志，单独配一个磁盘或挂摘点将大大提高性能
+clientPort=2181
+
+# the maximum number of client connections.
+# increase this if you need to handle more clients
+#maxClientCnxns=60
+#
+# Be sure to read the maintenance section of the 
+# administrator guide before turning on autopurge.
+#
+# http://zookeeper.apache.org/doc/current/zookeeperAdmin.html#sc_maintenance
+#
+# The number of snapshots to retain in dataDir
+#autopurge.snapRetainCount=3
+# Purge task interval in hours
+# Set to "0" to disable auto purge feature
+#autopurge.purgeInterval=1
+
+其他设置：
+
+globalOutstandingLimit  配置zoo最大请求危机数,限制同时请求数
+
+preAllocSize   事务日志文件预分配的磁盘空间大小（默认64M）
+
+snapCount    相邻两次数据快照之间事务操作的次数
+
+traceFile   
+
+maxClientCnxns        从socket层面限制“单台"客户机与服务器之间的并发数，置为0 不做任何限制
+
+clientPortAddress     允许为每个IP地址指定不同监听端口
+
+minSessionTimeout  
+                      服务端对客户端会话的超时时间进行限制
+maxSessionTimeout
+
+fsync.warningthresholdms   事务日志同步操作时消耗时间的报警阈值，一旦超过将打印出报警日志
+
+autopurge.snapRetainCount  与下面配套使用，zoo数据自动清理的频率,0不开启（默认）
+autopurge.purgeInterval   zoo在进行数据清理时保留的快照文件数量和对应的事务日志文件，注：并不是所有文件d都可被清理的 否则将无法恢复数据  最小值3 至少保留三个数据和快照文件备份
+
+syncEnabled
+
+electionAlg   配置zookeeper leader全与算法, 目前无用
+
+initLimit     leaderd等待flower服务器启动，并完成同步的时间，默认10就好，管理的集群多了再适当调大
+
+leaderServes  leaderd是否接受客户端的链接，设置不接收是为了让leaderd只专注于服务器的协调
+
+server.x=[hostname]:nnnnn[:nnnnn]   配置服务器列表
+
+syncLimit     leaderd与flower心跳检测最大延时时间，默认5，若集群网络延时较大，可调大
+
+group.x=nnnnn[:nnnnn] 
+
+cnxTimeout    TCP创建连接的超时时间，默认5000
+
+forceSync     zoo服务器是否在事务提交时将日志写入操作强制写入磁盘，默认yes 每次都实时写入
+
+jute.maxbuffer:  单个数据节点可以存储的最大数据量大小，默认1M不需改，zo也不适合存储数据，所有机器都设置才能生效
+
+skipACL       zoo集群是否跳过ACL权限检查 默认no,yes能一定程度提高读写性能，但那些设置过不跳过的节点也将不受控制
+
+quorumListenOnAllIPs
+
+
+
+
+
+
+
+
+
+
+
+
+

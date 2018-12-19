@@ -1,0 +1,35 @@
+下载：https://spark-packages.org/package/databricks/tensorframes
+
+git：https://github.com/databricks/tensorframes
+
+
+spark-shell, pyspark, or spark-submit
+
+> $SPARK_HOME/bin/spark-shell --packages databricks:tensorframes:0.2.9-s_2.11
+
+
+
+wget http://dist.neo4j.org/neo4j-enterprise-3.2.5-M02-unix.tar.gz
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

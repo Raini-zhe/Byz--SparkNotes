@@ -1,0 +1,24 @@
+
+
+Spark-2.2.1 使用报错：
+
+scala>   val aptTypedDs2 = TypedDataset.create(aptDs)
+java.lang.NoClassDefFoundError: frameless/Injection
+  at frameless.TypedEncoder$.<init>(TypedEncoder.scala:95)
+  at frameless.TypedEncoder$.<clinit>(TypedEncoder.scala)
+  ... 50 elided
+Caused by: java.lang.ClassNotFoundException: frameless.Injection
+  at java.net.URLClassLoader.findClass(URLClassLoader.java:381)
+  at java.lang.ClassLoader.loadClass(ClassLoader.java:424)
+  at sun.misc.Launcher$AppClassLoader.loadClass(Launcher.java:331)
+  at java.lang.ClassLoader.loadClass(ClassLoader.java:357)
+  ... 52 more
+
+所有NoClassDefFoundError都是缺包，或者包不对
+
+
+
+官网文档：
+https://typelevel.org/frameless/FeatureOverview.html
+
+

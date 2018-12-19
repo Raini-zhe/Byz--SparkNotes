@@ -1,0 +1,102 @@
+config/server.properties参数kafka主要配置 
+
+broker.id = 1
+port = 9092
+host.name=biyuzhe(hostname)
+log.dirs=/home/raini/kafka/tmp/logs
+zookeeper.connect=biyuzhe:2181
+
+启动raini@biyuzhe:~/zookeeper$ bin/zkServer.sh start
+
+raini@biyuzhe:~/zookeeper$ jps
+3489 QuorumPeerMain
+3514 Jps
+
+启动raini@biyuzhe:~/kafka$ bin/kafka-server-start.sh config/server.properties &
+
+
+
+> kafka-topics.sh  --create --zookeeper biyuzhe:2181  --replication-factor 1 --partitions 1 --topic my-topic
+Created topic "my-topic".创建topic (此处创建是名称为‘my-topic’的topic，它只有一个分区，一个副本)
+
+修改：
+
+> kafka-topics.sh --zookeeper localhost:2181  --alter --topic my-topic  --partitions 2
+
+查看topic列表
+
+> kafka-topics.sh --list --zookeeper biyuzhe:2181
+
+查看集群特定topic信息
+
+> kafka-topics.sh --describe --zookeeper biyuzhe:2181
+> kafka-topics.sh --describe --zookeeper biyuzhe:2181 --topic my-topic
+
+
+启动生产者producer： 发送消息，从文件中或者从标准输入中读取消息并发送到服务端。默认的每条命令将发送一条消息。运行producer并在控制台中输一些消息，这些消息将被发送到服务端： 
+
+raini@biyuzhe:~/kafka$ kafka-console-producer.sh --broker-list localhost:9092 --topic my-topic
+
+consumer接收消息: Kafka也有一个命令行consumer可以读取消息并输出到标准输出：
+
+raini@biyuzhe:~$ kafka-console-consumer.sh --zookeeper biyuzhe:2181 --topic my-topic --from-beginning
+
+
+
+SparkStream.KafkaWordCount
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+kafka常用命令行总结：
+
+1.查看topic的详细信息
+./kafka-topics.sh -zookeeper 127.0.0.1:2181 -describe -topic testKJ1
+
+2、为topic增加副本
+./kafka-reassign-partitions.sh -zookeeper 127.0.0.1:2181 -reassignment-json-file json/partitions-to-move.json -execute
+
+3、创建topic
+./kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic testKJ1
+
+4、为topic增加partition
+./bin/kafka-topics.sh –zookeeper 127.0.0.1:2181 –alter –partitions 20 –topic testKJ1
+
+5、kafka生产者客户端命令
+./kafka-console-producer.sh --broker-list localhost:9092 --topic testKJ1
+
+6、kafka消费者客户端命令
+./kafka-console-consumer.sh -zookeeper localhost:2181 --from-beginning --topic testKJ1
+
+7、kafka服务启动
+./kafka-server-start.sh -daemon ../config/server.properties 
+
+8、下线broker
+./kafka-run-class.sh kafka.admin.ShutdownBroker --zookeeper 127.0.0.1:2181 --broker #brokerId# --num.retries 3 --retry.interval.ms 60
+shutdown broker
+
+9、删除topic
+./kafka-run-class.sh kafka.admin.DeleteTopicCommand --topic testKJ1 --zookeeper 127.0.0.1:2181
+
+
+

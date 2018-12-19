@@ -1,0 +1,131 @@
+﻿缺失值处理方面，可以使用全局的NA来统一标记缺失值：
+        /*将categoricalb类型的变量的缺失值使用0值填充*/
+        val strCols = Array("category","categoryVec")
+        val dfTrain = encoded.na.fill(0,strCols)
+
+
+//删除某列的空值和NaN
+val res=data1.na.drop(Array("gender","yearsmarried"))
+ 
+// 删除某列的非空且非NaN的低于10的
+data1.na.drop(10,Array("gender","yearsmarried"))
+    
+    
+ //填充所有空值的列
+val res123=data1.na.fill("wangxiao123")
+res123: org.apache.spark.sql.DataFrame = [affairs: string, gender: string ... 7 more fields]
+    
+ res123.limit(10).show()
++-------+-----------+---+------------+--------+-------------+---------+----------+-----------+
+|affairs|     gender|age|yearsmarried|children|religiousness|education|occupation|     rating|
++-------+-----------+---+------------+--------+-------------+---------+----------+-----------+
+|      0|       male| 37|          10|      no|            3|       18|         7|          4|
+|      0|wangxiao123| 27| wangxiao123|      no|            4|       14|         6|wangxiao123|
+|      0|wangxiao123| 32| wangxiao123|     yes|            1|       12|         1|wangxiao123|
+|      0|wangxiao123| 57| wangxiao123|     yes|            5|       18|         6|wangxiao123|
+|      0|wangxiao123| 22| wangxiao123|      no|            2|       17|         6|wangxiao123|
+|      0|wangxiao123| 32| wangxiao123|      no|            2|       17|         5|wangxiao123|
+|      0|     female| 22| wangxiao123|      no|            2|       12|         1|wangxiao123|
+|      0|       male| 57|          15|     yes|            2|       14|         4|          4|
+|      0|     female| 32|          15|     yes|            4|       16|         1|          2|
+|      0|       male| 22|         1.5|      no|            4|       14|         4|          5|
++-------+-----------+---+------------+--------+-------------+---------+----------+-----------+
+    
+ //对指定的列空值填充
+ val res2=data1.na.fill(value="wangxiao111",cols=Array("gender","yearsmarried") )
+res2: org.apache.spark.sql.DataFrame = [affairs: string, gender: string ... 7 more fields]
+    
+ res2.limit(10).show()
++-------+-----------+---+------------+--------+-------------+---------+----------+------+
+|affairs|     gender|age|yearsmarried|children|religiousness|education|occupation|rating|
++-------+-----------+---+------------+--------+-------------+---------+----------+------+
+|      0|       male| 37|          10|      no|            3|       18|         7|     4|
+|      0|wangxiao111| 27| wangxiao111|      no|            4|       14|         6|  null|
+|      0|wangxiao111| 32| wangxiao111|     yes|            1|       12|         1|  null|
+|      0|wangxiao111| 57| wangxiao111|     yes|            5|       18|         6|  null|
+|      0|wangxiao111| 22| wangxiao111|      no|            2|       17|         6|  null|
+|      0|wangxiao111| 32| wangxiao111|      no|            2|       17|         5|  null|
+|      0|     female| 22| wangxiao111|      no|            2|       12|         1|  null|
+|      0|       male| 57|          15|     yes|            2|       14|         4|     4|
+|      0|     female| 32|          15|     yes|            4|       16|         1|     2|
+|      0|       male| 22|         1.5|      no|            4|       14|         4|     5|
++-------+-----------+---+------------+--------+-------------+---------+----------+------+
+    
+    
+val res3=data1.na.fill(Map("gender"->"wangxiao222","yearsmarried"->"wangxiao567") )
+res3: org.apache.spark.sql.DataFrame = [affairs: string, gender: string ... 7 more fields]
+    
+ res3.limit(10).show()
++-------+-----------+---+------------+--------+-------------+---------+----------+------+
+|affairs|     gender|age|yearsmarried|children|religiousness|education|occupation|rating|
++-------+-----------+---+------------+--------+-------------+---------+----------+------+
+|      0|       male| 37|          10|      no|            3|       18|         7|     4|
+|      0|wangxiao222| 27| wangxiao567|      no|            4|       14|         6|  null|
+|      0|wangxiao222| 32| wangxiao567|     yes|            1|       12|         1|  null|
+|      0|wangxiao222| 57| wangxiao567|     yes|            5|       18|         6|  null|
+|      0|wangxiao222| 22| wangxiao567|      no|            2|       17|         6|  null|
+|      0|wangxiao222| 32| wangxiao567|      no|            2|       17|         5|  null|
+|      0|     female| 22| wangxiao567|      no|            2|       12|         1|  null|
+|      0|       male| 57|          15|     yes|            2|       14|         4|     4|
+|      0|     female| 32|          15|     yes|            4|       16|         1|     2|
+|      0|       male| 22|         1.5|      no|            4|       14|         4|     5|
++-------+-----------+---+------------+--------+-------------+---------+----------+------+
+    
+ //查询空值列
+data1.filter("gender is null").select("gender").limit(10).show
++------+
+|gender|
++------+
+|  null|
+|  null|
+|  null|
+|  null|
+|  null|
++------+
+    
+    
+ data1.filter("gender is not null").select("gender").limit(10).show
++------+
+|gender|
++------+
+|  male|
+|female|
+|  male|
+|female|
+|  male|
+|  male|
+|  male|
+|  male|
+|female|
+|female|
++------+
+    
+    
+ data1.filter( data1("gender").isNull ).select("gender").limit(10).show
++------+
+|gender|
++------+
+|  null|
+|  null|
+|  null|
+|  null|
+|  null|
++------+
+    
+    
+ data1.filter("gender<>''").select("gender").limit(10).show
++------+
+|gender|
++------+
+|  male|
+|female|
+|  male|
+|female|
+|  male|
+|  male|
+|  male|
+|  male|
+|female|
+|female|
++------+
+    

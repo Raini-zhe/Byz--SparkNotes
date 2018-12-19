@@ -1,0 +1,62 @@
+优化
+vi spark-defaults.conf
+spark.serializer        org.apache.spark.serializer.KryoSerializer
+spark.kryo.registrator  org.apache.spark.graphx.GraphKryoRegistrator
+
+
+import org.apache.spark.graphx._
+
+import org.apache.spark.rdd.RDD
+import org.apache.spark.storage.StorageLevel
+
+//读入数据文件
+val articles: RDD[String] = sc.textFile("file:///app/hadoop/data/graphx-wiki-vertices.txt")
+
+val links: RDD[String] = sc.textFile("file:///app/hadoop/data/graphx-wiki-edges.txt")
+
+//装载顶点和边
+val vertices = articles.map { line =>
+  
+val fields = line.split('\t')
+  
+(fields(0).toLong, fields(1))
+
+}
+
+val edges = links.map { line =>
+  
+val fields = line.split('\t')
+  
+Edge(fields(0).toLong, fields(1).toLong, 0)
+
+}
+
+//cache
+//val graph = Graph(vertices, edges, "").persist(StorageLevel.MEMORY_ONLY_SER)
+val graph = Graph(vertices, edges, "").persist()
+graph.vertices.count
+graph.triplets.count
+
+//graph.unpersistVertices(false)
+
+
+//测试
+graph.triplets.take(5).foreach(println(_))
+
+
+//pageRank算法里面的时候使用了cache()，故前面persist的时候只能使用MEMORY_ONLY
+val prGraph = graph.pageRank(0.001).cache()
+
+val titleAndPrGraph = graph.outerJoinVertices(prGraph.vertices) {
+  
+(v, title, rank) => (rank.getOrElse(0.0), title)
+
+}
+
+
+
+titleAndPrGraph.vertices.top(10) {
+  
+Ordering.by((entry: (VertexId, (Double, String))) => entry._2._1)
+
+}.foreach(t => println(t._2._2 + ": " + t._2._1))

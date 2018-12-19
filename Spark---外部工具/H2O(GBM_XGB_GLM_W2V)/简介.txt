@@ -1,0 +1,46 @@
+
+官方文档：http://docs.h2o.ai/sparkling-water/2.2/latest-stable/doc/index.html
+
+
+H2O是分布式，可扩展机器学习的内存平台。H2O使用R，Python，Scala，Java，JSON和Flow笔记本/ Web界面等熟悉的界面，并可与Hadoop和Spark等大数据技术无缝协作。H2O提供了许多流行算法的实现，如GBM，随机森林，深度神经网络，Word2Vec和堆叠合奏。H2O是可扩展的，因此开发人员可以添加他们选择的数据转换和自定义算法，并通过所有这些客户端访问它们。
+
+数据收集非常简单。决策很难。H2O使得通过更快和更好的预测建模从数据中获得洞察力变得快速和容易。H2O允许在单一平台上进行在线评分和建模。
+
+
+Sparkling Water将H 2 O的快速可扩展机器学习引擎与Spark 集成在一起。它提供：
+
+	1.实用程序将Spark数据结构（RDD，DataFrames，Datasets）发布为H2O的框架，反之亦然。
+	2.DSL使用Spark数据结构作为H2O算法的输入。
+	3.使用Spark和H2O API创建ML应用程序的基本构建模块。
+	4.Python界面可直接从PySpark使用Sparkling Water。
+
+
+依赖：
+	ai.h2o:sparkling-water-core_{{scala_version}}:{{version}} - 包括苏打水的核心
+	ai.h2o:sparkling-water-examples_{{scala_version}}:{{version}} - 包含示例应用程序
+	ai.h2o:sparkling-water-repl_{{scala_version}}:{{version}} - Spark REPL集成到H2O Flow UI中
+	ai.h2o:sparkling-water-ml_{{scala_version}}:{{version}} - 通过基于H2O的转换扩展Spark ML包
+	ai.h2o:sparkling-water-package_{{scala_version}}:{{version}} - 优步苏打水包装参考所有可用的苏打水模块。这被设计为通过--packages选项作为Spark包使用
+	版本最好对应下面编译的版本。
+
+部署还需要编译H2O源码：
+	得到：sparkling-water-2.2.9/assembly/build/libs/sparkling-water-assembly_2.11-2.2.9-all.jar 
+
+
+启动SSL安全机制,加密配置参数：
+	import org.apache.spark.network.Security
+	import org.apache.spark.h2o._
+	Security.enableSSL(spark) // generate properties file, key pairs and set appropriate H2O parameters
+	val hc = H2OContext.getOrCreate(spark) // start the H2O cloud
+
+
+配置日志目录：
+ 	--conf "spark.ext.h2o.node.log.dir=/worker/node/log/location"
+
+启动Spark使用h2o：
+	spark-shell --packages ai.h2o：sparkling-water-package_2.11：2.2.10
+
+
+
+
+

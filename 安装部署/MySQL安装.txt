@@ -1,0 +1,16 @@
+
+安装：
+    sudo apt install mysql-server
+
+重置密码1：
+    SET PASSWORD FOR 'root'@'localhost' = PASSWORD('root');
+重置密码2：
+    update mysql.user set authentication_string=PASSWORD('root'), plugin='mysql_native_password' where user='root';
+
+给用户赋权：
+    grant all privileges on *.* to 'root'@'%' identified by 'root';
+    grant all privileges on *.* to 'root'@'localhost' identified by 'root';
+
+更新：
+    flush privileges;
+

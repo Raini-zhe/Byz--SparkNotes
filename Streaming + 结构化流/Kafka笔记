@@ -1,0 +1,64 @@
+
+# raini@biyuzhe:~$ nc -lk 9999
+
+
+
+# kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic test1
+# kafka-topics.sh --list --zookeeper localhost:2181 
+
+
+kafka-console-producer.sh --broker-list localhost:9092 --topic test1
+
+kafka-console-consumer.sh --zookeeper localhost:2181 --topic test1 --from-beginning 
+
+
+Kafka集群的topic以及partition(划分)等信息也可以通过登录zk来观察。
+然后再通过下列命令查看Kafka接收到的所有交换机日志信息：
+	bin/kafka-console-consumer.sh --zookeeper localhost:2181 --from-beginning --topic test11
+
+
+	（Kafka“bootstrap.servers”配置。）
+
+
+{"city": "<CITY>",  "country": "United States",  "countryCode": "US",  "isp": "<ISP>",   "lat": 0.00,  "lon": 0.00,   "region": "CA",   "regionName":"California",   "status": "success",   "hittime": "<TIMPSTAMP>",   "zip": "<ZIP>" }
+
+
+Caused by: java.lang.NumberFormatException: For input string: "ConsumerRecord(topic"
+  at java.lang.NumberFormatException.forInputString(NumberFormatException.java:65)
+  at java.lang.Integer.parseInt(Integer.java:580)
+  at java.lang.Integer.parseInt(Integer.java:615)
+  at scala.collection.immutable.StringLike$class.toInt(StringLike.scala:272)
+  at scala.collection.immutable.StringOps.toInt(StringOps.scala:29)
+  at $anonfun$1$$anonfun$apply$2.apply(<console>:55)
+  at $anonfun$1$$anonfun$apply$2.apply(<console>:55)
+  at scala.collection.Iterator$$anon$11.next(Iterator.scala:409)
+  at scala.collection.Iterator$$anon$11.next(Iterator.scala:409)
+  at org.apache.spark.sql.catalyst.expressions.GeneratedClass$GeneratedIterator.processNext(Unknown Source)
+  at org.apache.spark.sql.execution.BufferedRowIterator.hasNext(BufferedRowIterator.java:43)
+  at org.apache.spark.sql.execution.WholeStageCodegenExec$$anonfun$8$$anon$1.hasNext(WholeStageCodegenExec.scala:395)
+  at scala.collection.Iterator$$anon$11.hasNext(Iterator.scala:408)
+  at org.apache.spark.shuffle.sort.BypassMergeSortShuffleWriter.write(BypassMergeSortShuffleWriter.java:125)
+  at org.apache.spark.scheduler.ShuffleMapTask.runTask(ShuffleMapTask.scala:96)
+  at org.apache.spark.scheduler.ShuffleMapTask.runTask(ShuffleMapTask.scala:53)
+  at org.apache.spark.scheduler.Task.run(Task.scala:108)
+  at org.apache.spark.executor.Executor$TaskRunner.run(Executor.scala:335)
+
+
+org.apache.spark.SparkException: Job aborted due to stage failure: Task 0 in stage 14.0 failed 1 times, most recent failure: Lost task 0.0 in stage 14.0 (TID 810, localhost, executor driver): java.lang.NumberFormatException: For input string: "ConsumerRecord(topic"
+        at java.lang.NumberFormatException.forInputString(NumberFormatException.java:65)
+        at java.lang.Integer.parseInt(Integer.java:580)
+        at java.lang.Integer.parseInt(Integer.java:615)
+        at scala.collection.immutable.StringLike$class.toInt(StringLike.scala:272)
+
+
+解决：
+    val events = kafkaStream.flatMap(line => {
+      Some(line.toString())
+    })
+    
+
+    改成：
+
+    val events = kafkaStream.map(record => record.value)
+    
+

@@ -1,0 +1,33 @@
+
+
+H2OFrame -> RDD:
+
+	val df: H2OFrame = ...
+	val rdd = asRDD[Weather](df)
+
+
+
+Converting an H2OFrame into a DataFrame£º
+
+	val sqlContext = new SQLContext(sc)
+	val schemaRDD = asDataFrame(h2oFrame)(sqlContext)
+
+or as an implicit variable provided by the actual environment:
+
+  	implicit val sqlContext = spark.sqlContext
+	implicit val sqlContext = new SQLContext(sc)
+	val schemaRDD = asDataFrame(h2oFrame)
+
+
+
+
+
+
+
+
+
+
+
+
+
+

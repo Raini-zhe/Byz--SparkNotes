@@ -1,0 +1,4 @@
+﻿file:///media/raini/Software/Baidu-云计算-Download/Hdoop--高阶- 资料集/hive调优.pdf”。
+
+这样的磁盘其实是可以只读挂载的 sudo mount -t ntfs-3g /dev/sda3 /mnt/ -ro force
+

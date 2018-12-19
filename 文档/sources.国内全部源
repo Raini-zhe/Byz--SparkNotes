@@ -1,0 +1,192 @@
+﻿deb cdrom:[Ubuntu 14.10 _Utopic Unicorn_ - Release amd64 (20141022.1)]/ utopic main restricted
+
+# See http://help.ubuntu.com/community/UpgradeNotes for how to upgrade to
+# newer versions of the distribution.
+# deb http://archive.ubuntu.com/ubuntu utopic main restricted
+# deb-src http://archive.ubuntu.com/ubuntu utopic main restricted
+
+## Major bug fix updates produced after the final release of the
+## distribution.
+# deb http://archive.ubuntu.com/ubuntu utopic-updates main restricted
+# deb-src http://archive.ubuntu.com/ubuntu utopic-updates main restricted
+
+## N.B. software from this repository is ENTIRELY UNSUPPORTED by the Ubuntu
+## team. Also, please note that software in universe WILL NOT receive any
+## review or updates from the Ubuntu security team.
+deb http://mirrors.163.com/ubuntu/ utopic universe main multiverse restricted
+deb-src http://mirrors.163.com/ubuntu/ utopic restricted multiverse universe main #Added by software-properties
+# deb-src http://archive.ubuntu.com/ubuntu utopic universe
+# deb http://archive.ubuntu.com/ubuntu utopic-updates universe
+# deb-src http://archive.ubuntu.com/ubuntu utopic-updates universe
+
+## N.B. software from this repository is ENTIRELY UNSUPPORTED by the Ubuntu 
+## team, and may not be under a free licence. Please satisfy yourself as to 
+## your rights to use the software. Also, please note that software in 
+## multiverse WILL NOT receive any review or updates from the Ubuntu
+## security team.
+# deb http://archive.ubuntu.com/ubuntu utopic multiverse
+# deb-src http://archive.ubuntu.com/ubuntu utopic multiverse
+# deb http://archive.ubuntu.com/ubuntu utopic-updates multiverse
+# deb-src http://archive.ubuntu.com/ubuntu utopic-updates multiverse
+
+#163
+deb http://mirrors.163.com/ubuntu/ vivid main restricted universe multiverse
+deb http://mirrors.163.com/ubuntu/ vivid-security main restricted universe multiverse
+deb http://mirrors.163.com/ubuntu/ vivid-updates main restricted universe multiverse
+deb http://mirrors.163.com/ubuntu/ vivid-proposed main restricted universe multiverse
+deb http://mirrors.163.com/ubuntu/ vivid-backports main restricted universe multiverse
+deb-src http://mirrors.163.com/ubuntu/ vivid main restricted universe multiverse
+deb-src http://mirrors.163.com/ubuntu/ vivid-security main restricted universe multiverse
+deb-src http://mirrors.163.com/ubuntu/ vivid-updates main restricted universe multiverse
+deb-src http://mirrors.163.com/ubuntu/ vivid-proposed main restricted universe multiverse
+deb-src http://mirrors.163.com/ubuntu/ vivid-backports main restricted universe multiverse
+
+deb http://mirrors.163.com/ubuntu/ trusty main restricted universe multiverse
+deb http://mirrors.163.com/ubuntu/ trusty-security main restricted universe multiverse
+deb http://mirrors.163.com/ubuntu/ trusty-updates main restricted universe multiverse
+deb http://mirrors.163.com/ubuntu/ trusty-proposed main restricted universe multiverse
+deb http://mirrors.163.com/ubuntu/ trusty-backports main restricted universe multiverse
+deb-src http://mirrors.163.com/ubuntu/ trusty main restricted universe multiverse
+deb-src http://mirrors.163.com/ubuntu/ trusty-security main restricted universe multiverse
+deb-src http://mirrors.163.com/ubuntu/ trusty-updates main restricted universe multiverse
+deb-src http://mirrors.163.com/ubuntu/ trusty-proposed main restricted universe multiverse
+deb-src http://mirrors.163.com/ubuntu/ trusty-backports main restricted universe multiverse
+#中科大
+
+deb http://debian.ustc.edu.cn/ubuntu/ trusty main multiverse restricted universe
+
+deb http://debian.ustc.edu.cn/ubuntu/ trusty-backports main multiverse restricted universe
+
+deb http://debian.ustc.edu.cn/ubuntu/ trusty-proposed main multiverse restricted universe
+
+deb http://debian.ustc.edu.cn/ubuntu/ trusty-security main multiverse restricted universe
+
+deb http://debian.ustc.edu.cn/ubuntu/ trusty-updates main multiverse restricted universe
+
+deb-src http://debian.ustc.edu.cn/ubuntu/ trusty main multiverse restricted universe
+
+deb-src http://debian.ustc.edu.cn/ubuntu/ trusty-backports main multiverse restricted universe
+
+deb-src http://debian.ustc.edu.cn/ubuntu/ trusty-proposed main multiverse restricted universe
+
+deb-src http://debian.ustc.edu.cn/ubuntu/ trusty-security main multiverse restricted universe
+
+deb-src http://debian.ustc.edu.cn/ubuntu/ trusty-updates main multiverse restricted universe
+
+#sohu
+
+deb http://mirrors.sohu.com/ubuntu/ trusty main restricted universe multiverse
+
+deb http://mirrors.sohu.com/ubuntu/ trusty-security main restricted universe multiverse
+
+deb http://mirrors.sohu.com/ubuntu/ trusty-updates main restricted universe multiverse
+
+deb http://mirrors.sohu.com/ubuntu/ trusty-proposed main restricted universe multiverse
+
+deb http://mirrors.sohu.com/ubuntu/ trusty-backports main restricted universe multiverse
+
+deb-src http://mirrors.sohu.com/ubuntu/ trusty main restricted universe multiverse
+
+deb-src http://mirrors.sohu.com/ubuntu/ trusty-security main restricted universe multiverse
+
+deb-src http://mirrors.sohu.com/ubuntu/ trusty-updates main restricted universe multiverse
+
+deb-src http://mirrors.sohu.com/ubuntu/ trusty-proposed main restricted universe multiverse
+
+deb-src http://mirrors.sohu.com/ubuntu/ trusty-backports main restricted universe multiverse
+
+
+#北京交通大学
+
+deb http://mirror.bjtu.edu.cn/ubuntu/ trusty main multiverse restricted universe
+
+deb http://mirror.bjtu.edu.cn/ubuntu/ trusty-backports main multiverse restricted universe
+
+deb http://mirror.bjtu.edu.cn/ubuntu/ trusty-proposed main multiverse restricted universe
+
+deb http://mirror.bjtu.edu.cn/ubuntu/ trusty-security main multiverse restricted universe
+
+deb http://mirror.bjtu.edu.cn/ubuntu/ trusty-updates main multiverse restricted universe
+
+deb-src http://mirror.bjtu.edu.cn/ubuntu/ trusty main multiverse restricted universe
+
+deb-src http://mirror.bjtu.edu.cn/ubuntu/ trusty-backports main multiverse restricted universe
+
+deb-src http://mirror.bjtu.edu.cn/ubuntu/ trusty-proposed main multiverse restricted universe
+
+deb-src http://mirror.bjtu.edu.cn/ubuntu/ trusty-security main multiverse restricted universe
+
+deb-src http://mirror.bjtu.edu.cn/ubuntu/ trusty-updates main multiverse
+
+# 北京理工
+
+deb http://mirror.bjtu.edu.cn/ubuntu/ precise main multiverse restricted universe
+
+deb http://mirror.bjtu.edu.cn/ubuntu/ precise-backports main multiverse restricted universe
+
+deb http://mirror.bjtu.edu.cn/ubuntu/ precise-proposed main multiverse restricted universe
+
+deb http://mirror.bjtu.edu.cn/ubuntu/ precise-security main multiverse restricted universe
+
+deb http://mirror.bjtu.edu.cn/ubuntu/ precise-updates main multiverse restricted universe
+
+deb-src http://mirror.bjtu.edu.cn/ubuntu/ precise main multiverse restricted universe
+
+deb-src http://mirror.bjtu.edu.cn/ubuntu/ precise-backports main multiverse restricted universe
+
+deb-src http://mirror.bjtu.edu.cn/ubuntu/ precise-proposed main multiverse restricted universe
+
+deb-src http://mirror.bjtu.edu.cn/ubuntu/ precise-security main multiverse restricted universe
+
+deb-src http://mirror.bjtu.edu.cn/ubuntu/ precise-updates main multiverse restricted universe
+
+
+#上海交大
+
+deb http://ftp.sjtu.edu.cn/ubuntu/ trusty universe restricted multiverse maindeb http://ftp.sjtu.edu.cn/ubuntu/ trusty-security universe restricted multiverse maindeb http://ftp.sjtu.edu.cn/ubuntu/ trusty-updates universe restricted multiverse maindeb http://ftp.sjtu.edu.cn/ubuntu/ trusty-proposed universe restricted multiverse maindeb http://ftp.sjtu.edu.cn/ubuntu/ trusty-backports universe restricted multiverse main
+
+#阿里云服务器
+
+deb http://mirrors.aliyun.com/ubuntu/ trusty main restricted universe multiverse
+
+deb http://mirrors.aliyun.com/ubuntu/ trusty-security main restricted universe multiverse
+
+deb http://mirrors.aliyun.com/ubuntu/ trusty-updates main restricted universe multiverse
+
+deb http://mirrors.aliyun.com/ubuntu/ trusty-proposed main restricted universe multiverse
+
+deb http://mirrors.aliyun.com/ubuntu/ trusty-backports main restricted universe multiverse
+
+deb-src http://mirrors.aliyun.com/ubuntu/ trusty main restricted universe multiverse
+
+deb-src http://mirrors.aliyun.com/ubuntu/ trusty-security main restricted universe multiverse
+
+deb-src http://mirrors.aliyun.com/ubuntu/ trusty-updates main restricted universe multiverse
+
+deb-src http://mirrors.aliyun.com/ubuntu/ trusty-proposed main restricted universe multiverse
+
+deb-src http://mirrors.aliyun.com/ubuntu/ trusty-backports main restricted universe multiverse
+
+## N.B. software from this repository may not have been tested as
+## extensively as that contained in the main release, although it includes
+## newer versions of some applications which may provide useful features.
+## Also, please note that software in backports WILL NOT receive any review
+## or updates from the Ubuntu security team.
+# deb http://archive.ubuntu.com/ubuntu utopic-backports main restricted universe multiverse
+# deb-src http://archive.ubuntu.com/ubuntu utopic-backports main restricted universe multiverse
+
+# deb http://archive.ubuntu.com/ubuntu utopic-security main restricted
+# deb-src http://archive.ubuntu.com/ubuntu utopic-security main restricted
+# deb http://archive.ubuntu.com/ubuntu utopic-security universe
+# deb-src http://archive.ubuntu.com/ubuntu utopic-security universe
+# deb http://archive.ubuntu.com/ubuntu utopic-security multiverse
+# deb-src http://archive.ubuntu.com/ubuntu utopic-security multiverse
+
+## Uncomment the following two lines to add software from Canonical's
+## 'partner' repository.
+## This software is not part of Ubuntu, but is offered by Canonical and the
+## respective vendors as a service to Ubuntu users.
+# deb http://archive.canonical.com/ubuntu utopic partner
+# deb-src http://extras.ubuntu.com/ubuntu utopic maiiln
+
+deb http://security.ubuntu.com/ubuntu/ utopic-security restricted multiverse universe main

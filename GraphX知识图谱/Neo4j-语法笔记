@@ -1,0 +1,150 @@
+
+ 传统数据库一行就是neo4j数据库的一个节点。
+  传统数据库的一个表就是neo4j 的一个标签名。
+1、
+All Nodes Query
+MATCH (n)
+RETURN n;
+2、Returning a Property
+MATCH (person)-->()
+RETURN person.name;
+3、
+MATCH (tom:Person)
+WHERE tom.name = "Tom Hanks"
+RETURN tom;
+4、
+MATCH (movie:Movie)
+WHERE movie.title="Mystic River"
+SET movie.released = 2003
+RETURN movie;
+5、
+MATCH (me:Person), (movie:Movie)      
+WHERE me.name="My Name" AND 
+      movie.title="Mystic River"
+CREATE (me)-[:REVIEWED {rating:80, summary:"tragic character movie"}]->(movie);
+acted_in = (:Person)-[:ACTED_IN]->(:Movie)
+6、
+MERGE (m:Movie { title:"Cloud Atlas" }) ON CREATE SET m.released = 2012 RETURN m
+
+7、输出：（as后面是列名，输出的结果命一个名s）
+MATCH (p:Person) 
+RETURN p, p.name AS name, upper(p.name), coalesce(p.nickname,"n/a") AS nickname, { name: p.name,   label:head(labels(p))} AS person
+8、union语句
+MATCH (actor:Person)-[r:ACTED_IN]->(movie:Movie) RETURN actor.name AS name, type(r) AS acted_in, movie.title AS title 
+UNION
+MATCH (director:Person)-[r:DIRECTED]->(movie:Movie) RETURN director.name AS name, type(r) AS acted_in, movie.title AS title
+9、限制条件
+MATCH (user)-[:friend]->(follower) 
+WHERE user.name IN ['Joe', 'John', 'Sara', 'Maria', 'Steve'] AND follower.name =~ 'S.*' 
+RETURN user.name, follower.name
+
+10、Single shortest path
+MATCH (martin:Person { name:"Martin Sheen" }),(oliver:Person { name:"Oliver Stone" }), p = shortestPath((martin)-[*..15]-(oliver)) RETURN p
+
+11、All shortest paths
+MATCH (martin:Person { name:"Martin Sheen" }),(michael:Person { name:"Michael Douglas" }), p = allShortestPaths((martin)-[*]-(michael)) RETURN p
+
+12、Relationship by id
+1）MATCH ()-[r]->() WHERE id(r)= 0 RETURN r 
+2）MATCH (n) WHERE id(n) IN [0,3,5] RETURN n 
+13
+match (a:Entity{name:"山东省财金投资有限公司"})-[*1]->(b)  return a, b
+(a)-[*3..]->(b)
+(a)-[*..5]->(b)
+(a)-[*]->(b) 
+
+MATCH (me)-[:KNOWS*1..2]-(remote_friend) WHERE me.name = "Filipa" RETURN remote_friend.name
+ 
+14  Order by 
+MATCH (n) RETURN n ORDER BY n.name 
+
+RETURN [x IN range(0,10) WHERE x % 2 = 0] AS result
+
+15 limit
+MATCH (n) RETURN n ORDER BY n.name LIMIT 3 
+
+16 skip(从三开始输出)
+MATCH (n) RETURN n ORDER BY n.name SKIP 3 
+
+MATCH (n) WITH n ORDER BY n.name DESC LIMIT 3 RETURN collect(n.name)
+
+Query MATCH (david { name: "David" })--(otherPerson)-->() WITH otherPerson, count(*) AS foaf WHERE foaf > 1 RETURN otherPerson 
+
+17Combine two queries
+MATCH (n:Actor) RETURN n.name AS name
+ UNION ALL 
+MATCH (n:Movie) RETURN n.title AS name 
+
+18   Combine two queries and remove duplicates
+MATCH (n:Actor) RETURN n.name AS name 
+UNION
+ MATCH (n:Movie) RETURN n.title AS name 
+
+19 Matching on a bound relationship
+
+MATCH (a)-[r]-(b) WHERE id(r)= 0 RETURN a,b
+
+20 Single shortest path
+MATCH (martin:Person { name:"Martin Sheen" }),(oliver:Person { name:"Oliver Stone" }), p = shortestPath((martin)-[*..15]-(oliver))
+RETURN p
+
+21  All shortest paths
+MATCH (martin:Person { name:"Martin Sheen" }),(michael:Person { name:"Michael Douglas" }), p = allShortestPaths((martin)-[*]-(michael)) RETURN p 
+
+22  Multiple nodes by id
+MATCH (n) WHERE id(n) IN [0,3,5] RETURN n 
+
+23  Properties on optional elements
+MATCH (a:Movie { title: 'Wall Street' }) OPTIONAL MATCH (a)-->(x) RETURN x, x.name 
+
+24
+MATCH (n) WHERE n.age < 30 RETURN n 
+
+25 exists
+MATCH (n) WHERE exists(n.belt) RETURN n 
+MATCH (n) WHERE n.name STARTS WITH 'Pet' RETURN n 
+
+26 ENDS WITH
+MATCH (n) WHERE n.name ENDS WITH 'ter' RETURN n 
+
+27CONTAINS
+MATCH (n) WHERE n.name CONTAINS 'ete' RETURN n 
+
+28 =~ "regexp"
+MATCH (n) WHERE n.name =~ 'Tob.*' RETURN n
+
+29  Using path patterns in WHERE
+MATCH (tobias { name: 'Tobias' }),(others) WHERE others.name IN ['Andres', 'Peter'] AND (tobias)<--(others) RETURN others 
+
+30 Filter on patterns using NOT
+MATCH (persons),(peter { name: 'Peter' })
+WHERE NOT (persons)-->(peter) 
+RETURN persons
+
+31
+MATCH (n)-[r]->() WHERE n.name='Andres' AND type(r)=~ 'K.*' RETURN r
+
+32 in
+MATCH (a) WHERE a.name IN ["Peter", "Tobias"] RETURN a
+
+33
+START n=node:nodes(name = "A") RETURN n 
+   | Node[0]{name:"A"} 
+
+33 avg
+MATCH (n:Person) RETURN avg(n.property)
+
+34 The 40th percentile of the values in the property property is returned by the example query, calculated with a weighted average.
+
+MATCH (n:Person) RETURN percentileCont(n.property, 0.4) 
+
+35  Import data from a CSV file
+LOAD CSV FROM 'http://neo4j.com/docs/3.0.1/csv/artists.csv' AS line CREATE (:Artist { name: line[1], year: toInt(line[2])})   
+
+36删除所有节点： 
+
+match (n:Entity) -[f]-(p:Entity)  delete f,n,p  
+
+
+
+

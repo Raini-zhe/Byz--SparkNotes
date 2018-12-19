@@ -1,0 +1,17 @@
+
+Spark内置为我们提供了一种优雅的方法来关闭长期运行的Streaming作业,设置stopGracefullyOnShutdown，而不需要在每个Streaming程序里面手动调用StreamingContext的stop方法.
+
+StreamingContext 类中定义的一个 stop 方法：
+    def stop(stopSparkContext: Boolean, stopGracefully: Boolean)
+
+官方文档对其解释是：Stop the execution of the streams, with option of ensuring all received data has been processed. 
+控制所有接收的数据是否被处理的参数就是 stopGracefully，如果我们将它设置为true，Spark则会等待所有接收的数据被处理完成，然后再关闭计算引擎，这样就可以避免数据的丢失。
+
+
+用法：
+    val conf = new SparkConf().setAppName("Checkpoint_SparkLiveQuality").setMaster("local[2]").
+      set("spark.streaming.stopGracefullyOnShutdown","true") 
+    val ssc = new StreamingContext(conf, Seconds(5))
+
+
+

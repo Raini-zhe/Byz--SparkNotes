@@ -1,0 +1,117 @@
+﻿
+https://github.com/ninia/jep/wiki/FAQ#what-java-ui-frameworks-does-jep-support
+
+java -Djava.library.path=<path>
+
+如果要查找当前在机器中设置的路径，请运行以下命令。
+
+System.out.println(System.getProperty("java.library.path"));
+你可以在你的代码中明确地设置路径如下
+
+System.setProperty(“java.library.path”, “/path/to/library”);
+
+
+在Linux上，它映射到 LD_LIBRARY_PATH
+
+
+
+
+
+安装配置：
+	$ apt-get update
+	$ apt-get install -y python3-pip
+	$ pip3 install jep
+
+	$ pip3 show jep | grep Location
+		Location: /usr/local/lib/python3.6/dist-packages
+
+	raini@biyuzhe:~$ ls -la /usr/local/lib/python3.6/dist-packages/jep
+		总用量 2748
+		drwxr-sr-x   4 root staff    4096 10月 11 10:13 .
+		drwxrwsr-x 114 root staff    4096 10月 11 10:11 ..
+		-rw-r--r--   1 root staff    2856 10月 11 10:11 console.py
+		-rw-r--r--   1 root staff     254 10月 11 10:11 __init__.py
+		-rw-r--r--   1 root staff    2857 10月 11 10:11 java_import_hook.py
+		-rw-r--r--   1 root staff    9867 10月 11 10:11 jdbc.py
+		-rw-r--r--   1 root staff  108608 10月 11 10:11 jep-3.7.0.jar
+		-rwxr-xr-x   1 root staff 1322400 10月 11 10:11 jep.cpython-35m-x86_64-linux-gnu.so
+		drwxr-sr-x   2 root staff    4096 10月 11 10:15 lib
+		-rwxr-xr-x   1 root staff 1322400 10月 11 10:11 libjep.so
+		drwxr-sr-x   2 root staff    4096 10月 11 10:11 __pycache__
+		-rw-r--r--   1 root staff     890 10月 11 10:11 redirect_streams.py
+		-rw-r--r--   1 root staff    7168 10月 11 10:11 shared_modules_hook.py
+		-rw-r--r--   1 root staff      44 10月 11 10:11 version.py
+
+
+	# in this case, we are interested in jep-3.6.3.jar and libjep.so.
+	# It would be different on OSX or MsWindows.
+	$ mkdir /home/raini/app/jep/jep-lib
+	$ cp /usr/local/lib/python3.4/dist-packages/jep/{jep-3.6.3.jar,libjep.so} /home/raini/app/jep/jep-lib
+
+
+
+在环境中配置java动态库：
+	# scala中使用python代码-需要的库libjep.so
+	export LD_LIBRARY_PATH=/home/raini/app/jep/jep-lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
+
+
+调用：
+	raini@biyuzhe:~$ spark-shell --jars /home/raini/app/jep/jep-lib/jep-3.7.0.jar -Djava.library.path=/home/raini/app/jep/jep-lib
+
+
+
+
+
+"select A.* from (select calling_number,called_number,calling_operator,calling_location,called_operator,called_localion,calling_countryname,calling_provincename,calling_cityname, max(cast(btime as bigint)) as btime,sum(cast(nvl(case protocolid when '120' then call_duration else answerdur end,'0') as bigint)) as duration,callid,count(1) as cnt  from sip_bicc where _add_day=20171111 and dest_ne_ip like '10.14%' group by calling_number,called_number,callid,calling_operator,calling_location,calling_countryname,calling_provincename,calling_cityname,called_operator,called_localion) as A join (select calling_number from (select calling_number,called_number,callid from sip_bicc where dest_ne_ip like '10.14%' and (mathch_fraud_pattern= '0' or mathch_white_pattern= '0') and calling_number not like '400%' and calling_number not like '95%' and _add_day =20171111 group by calling_number,called_number,callid) as a group by calling_number having count(1)>=100 and length(calling_number)>10) as B on A.calling_number=B.calling_number or A.called_number=B.calling_number"
+
+
+
+
+
+
+服务器安装pi3:
+	先下载源码～
+
+	[root@node3 Python-3.6.3]# ./configure --prefix=/usr/local/python3
+	
+	[root@node3 Python-3.6.3]# make && make install
+
+	[root@node3 Python-3.6.3]# ln -s /usr/local/python3/bin/python3.6 /usr/bin/python3
+
+
+没有自带pip3，从官网安装:
+
+	wget --no-check-certificate https://bootstrap.pypa.io/get-pip.py
+
+	python3 get-pip.py
+	pip3 -V
+
+	pip install jep
+
+
+	wget --no-check-certificate  https://pypi.python.org/packages/source/p/pip/pip-9.0.1.tar.gz#md5=3a73c4188f8dbad6a1e6f6d44d117eeb
+
+	tar -zxvf pip-8.0.2.tar.gz
+
+	cd pip-8.0.2
+
+	python3 setup.py build
+
+	python3 setup.py install
+
+	使用：
+		/usr/local/python3/bin/pip3 install jep (需要java1.8)
+		/usr/local/python3/bin/pip3 install numpy
+		/usr/local/python3/bin/pip3 install 
+		/usr/local/python3/bin/pip3 install 
+
+
+yum install gcc libffi-devel python-devel openssl-devel
+yum install libsmbclient-devel  
+
+
+JAVA_HOME: /usr/java/jdk1.7.0_55
+
+
+
+

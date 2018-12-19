@@ -1,0 +1,96 @@
+https://www.iteblog.com/archives/1705.html
+
+
+使用内置的year函数来提取出日期中的年:
+    val stocks2016 = stocksDF.filter("year(Date)==2016")
+
+
+计算平均值;
+scala>
+    val tumblingWindowDS = stocks2016
+    .groupBy(window(stocks2016.col("Date"),"1 week")).agg(avg("Close").as("weekly_average"))
+
+  window一般在group by语句中使用。window方法的
+  第一个参数指定了时间所在的列；
+  第二个参数指定了窗口的持续时间(duration)，它的单位可以是seconds、minutes、hours、days或者weeks。创建好窗口之后，我们可以计算平均值。
+
+  +---------------------+---------------------+------------------+
+  |start                |end                  |weekly_average    |
+  +---------------------+---------------------+------------------+
+  |2015-12-28 08:00:00.0|2016-01-04 08:00:00.0|105.349998        |
+
+
+
+带有开始时间偏移的Time window
+    (因为开始时间默认从第一条数据开始，万一是去年到今年呢，像上面)：
+
+    可以通过将窗口时间(window duration)和滑动时间(slide duration)设置成一样来创建带有开始时间的tumbling window。代码如下：
+    val WindowWithStartTime = stocks2016
+    .groupBy(window(stocks2016.col("Date"),"1 week","1 week", "4 days")).agg(avg("Close").as("weekly_average"))
+
+    //上面的示例中，4 days参数就是开始时间的偏移量；前两个参数分别代表窗口时间和滑动时间
+
+    +---------------------+---------------------+------------------+
+    |start                |end                  |weekly_average    |
+    +---------------------+---------------------+------------------+
+    |2015-12-28 08:00:00.0|2016-01-04 08:00:00.0|105.349998        |
+    |2016-01-04 08:00:00.0|2016-01-11 08:00:00.0|99.0699982        |
+
+
+
+使用filter来过滤掉那行数据：
+
+    val filteredWindow = iteblogWindowWithStartTime.filter("year(window.start)=2016")
+
+    +---------------------+---------------------+------------------+
+    |start                |end                  |weekly_average    |
+    +---------------------+---------------------+------------------+
+    |2016-01-04 08:00:00.0|2016-01-11 08:00:00.0|99.0699982        |
+    |2016-01-11 08:00:00.0|2016-01-18 08:00:00.0|98.49999799999999 |
+    |2016-01-18 08:00:00.0|2016-01-25 08:00:00.0|98.1220016        |
+
+
+
+
+//------------流处理
+
+    val stream_detail = spark.sql( // 查询临时表
+      s"""
+        |select CAST(from_unixtime(floor(ts/1000),'yyyy-MM-dd HH:mm:ss') as TIMESTAMP) sampling_time,
+        | channel,
+        | body.isp isp,
+        | body.rid rid,
+        | channel,
+        | term,
+        | nettype,
+        | case when body.type=1 then 1 else 0 end stream_times
+        |from streamEvent
+        |""".stripMargin)
+      .withWatermark("sampling_time","4 minutes")
+
+
+      
+      // 统计窗口内的这些元素，后面使用聚合函数
+      .groupBy(window($"sampling_time", "1 minutes","1 minutes"),$"isp",$"rid",$"channel",$"term",$"nettype")
+      .agg(
+        sum("stream_times").as("stream_times")
+  //        count("isp").as("isp_stream_times"),
+  //        count("channel").as("channel_stream_times"),
+  //        count("term").as("term_stream_times"),
+  //        count("nettype").as("nettype_stream_times")
+      )
+      .withColumn("ctime",col("window.start"))
+      .withColumn("etime",col("window.end"))
+      .drop("window")
+      .toDF("isp","rid","channel","term","nettype","stream_times","ctime","etime")
+      .coalesce(1)
+
+
+
+
+
+
+
+
+
+，
